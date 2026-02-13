@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-# Envelope keys (Yap-style)
+# Envelope keys (server protocol)
 WS_KEY_TYPE = "type"
 WS_KEY_SESSION_ID = "session_id"
 WS_KEY_REQUEST_ID = "request_id"
@@ -24,7 +24,7 @@ WS_CLOSE_MAX_DURATION_REASON = "max connection duration reached"
 WS_IDLE_TIMEOUT_S = float(os.getenv("WS_IDLE_TIMEOUT_S", "150"))
 WS_WATCHDOG_TICK_S = float(os.getenv("WS_WATCHDOG_TICK_S", "5"))
 
-# Hard max connection duration (mirrors yap-stt-api: 90 minutes).
+# Hard max connection duration (default: 90 minutes).
 WS_MAX_CONNECTION_DURATION_S = float(os.getenv("WS_MAX_CONNECTION_DURATION_S", str(90 * 60)))
 
 # Errors (payload.code values)

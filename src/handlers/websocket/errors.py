@@ -1,4 +1,4 @@
-"""Error helpers for the Yap-style WebSocket envelope."""
+"""Error helpers for the WebSocket JSON envelope."""
 
 from __future__ import annotations
 

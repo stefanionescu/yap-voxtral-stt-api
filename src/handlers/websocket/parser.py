@@ -1,4 +1,4 @@
-"""Client message parsing/validation for the Yap-style envelope."""
+"""Client message parsing/validation for the WebSocket JSON envelope."""
 
 from __future__ import annotations
 

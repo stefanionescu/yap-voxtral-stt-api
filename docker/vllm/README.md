@@ -1,7 +1,7 @@
 # Docker (vLLM)
 
 This repo does not ship a prebuilt image. The Docker assets here are scaffolding
-only, intended to mirror the deployment style used in other Yap repos.
+only, intended to be a minimal starting point for containerized deployments.
 
 Key notes:
 - Voxtral Realtime relies on vLLM Realtime support.

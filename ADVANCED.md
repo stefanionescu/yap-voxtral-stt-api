@@ -1,7 +1,7 @@
 # Yap Voxtral STT API Advanced Guide
 
 This guide covers advanced operations and deep-dive details for serving **Mistral Voxtral Realtime**
-via **vLLM Realtime** behind a Yap-style WebSocket envelope.
+via **vLLM Realtime** behind a JSON WebSocket envelope.
 
 See the main [README](README.md) for quickstart and basic usage.
 
@@ -105,7 +105,7 @@ This server exposes a single WebSocket endpoint:
 ws://host:8000/ws
 ```
 
-All client messages are JSON text frames with a Yap-style envelope:
+All client messages are JSON text frames with an envelope:
 
 ```json
 {
@@ -186,7 +186,7 @@ Transcription:
 
 ### What You Receive
 
-The server forwards vLLM Realtime events inside the Yap envelope. You will typically see:
+The server forwards vLLM Realtime events inside the envelope. You will typically see:
 - `session.created`, `session.updated`
 - `transcription.delta` (payload contains `delta`)
 - `transcription.done` (payload contains `text`)

@@ -1,4 +1,4 @@
-"""Adapter between Yap-style envelopes and vLLM's RealtimeConnection."""
+"""Adapter between JSON envelopes and vLLM's RealtimeConnection."""
 
 from __future__ import annotations
 

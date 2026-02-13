@@ -4,7 +4,7 @@ import os
 
 
 def derive_default_server() -> str:
-    return (os.getenv("VOXTRAL_SERVER") or os.getenv("YAP_SERVER") or "localhost:8000").strip()
+    return (os.getenv("VOXTRAL_SERVER") or "localhost:8000").strip()
 
 
 def resolve_api_key(override: str | None = None) -> str | None:

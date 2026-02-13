@@ -87,7 +87,7 @@ class RealtimeClient:
         self.secure = secure
         self.debug = debug
 
-        # Timing fields for printing helpers (Yap STT style)
+        # Timing fields for printing helpers.
         self.session_start_ts: float = 0.0
         self.connect_elapsed_s: float = 0.0
         self.handshake_elapsed_s: float = 0.0

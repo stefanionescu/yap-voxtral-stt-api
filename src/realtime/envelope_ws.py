@@ -14,7 +14,7 @@ from .state import EnvelopeState
 
 
 class EnvelopeWebSocket:
-    """A minimal adapter that lets vLLM send raw Realtime events while clients see Yap envelopes."""
+    """A minimal adapter that lets vLLM send raw Realtime events while clients see JSON envelopes."""
 
     def __init__(
         self,

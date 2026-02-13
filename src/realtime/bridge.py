@@ -1,4 +1,4 @@
-"""Factories for bridging Yap-style envelopes to vLLM realtime sessions."""
+"""Factories for bridging JSON envelopes to vLLM realtime sessions."""
 
 from __future__ import annotations
 

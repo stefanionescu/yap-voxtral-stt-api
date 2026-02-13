@@ -5,13 +5,13 @@ Streaming speech-to-text (STT) server for **Mistral Voxtral Realtime** using **v
 - Default model: `mistralai/Voxtral-Mini-4B-Realtime-2602` (override with `VOXTRAL_MODEL_ID`)
 
 - FastAPI + WebSocket endpoint: `GET /ws`
-- Yap-style JSON envelope: `{type, session_id, request_id, payload}`
+- JSON envelope: `{type, session_id, request_id, payload}`
 - vLLM Realtime semantics inside the envelope (`session.update`, `input_audio_buffer.*`, `transcription.*`)
 - API key auth, connection cap, idle timeout, hard max duration, rate limits
 - Test clients + benchmarks (warmup, bench, idle, max-duration, live)
 
-This repo is shaped like the other Yap services: pinned dependencies, scripts for lifecycle
-management, and deterministic test/benchmark clients.
+This repo uses pinned dependencies, scripts for lifecycle management, and deterministic
+test/benchmark clients.
 
 ## Contents
 
@@ -30,7 +30,7 @@ management, and deterministic test/benchmark clients.
 ## Key Features
 
 - vLLM Realtime-native Voxtral serving (no custom decoding loop).
-- Yap-style envelope protocol for easy integration with existing Yap client logic.
+- Envelope protocol for easy integration with existing clients.
 - Strong connection lifecycle enforcement: idle timeout (150s), max duration (90 minutes), and a capacity guard (`MAX_CONCURRENT_CONNECTIONS`).
 - Model-inherent “lookahead” latency is configurable via `VOXTRAL_TRANSCRIPTION_DELAY_MS` (patched into `tekken.json`).
 - Bench harness for concurrency sweeps (8 / 32 / 64 / 100).
@@ -139,7 +139,7 @@ python tests/e2e/warmup.py --server localhost:8000
 
 All test clients live under `tests/e2e/`:
 
-- Sample audio lives under `samples/` (synced from `yap-stt-api`).
+- Sample audio lives under `samples/`.
 - `tests/e2e/warmup.py` – one utterance (default: `samples/mid.wav`) + metrics.
 - `tests/e2e/bench.py` – concurrent load generator with p50/p95 summaries.
 - `tests/e2e/idle.py` – validates idle timeout close behavior (default: code `4000`).
