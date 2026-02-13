@@ -4,7 +4,7 @@ pytest==8.3.4
 pytest-asyncio==0.25.3
 
 # Runtime types (tests import WebSocket typing)
-fastapi==0.115.8
+fastapi>=0.115.8
 
 ruff==0.9.4
 isort==6.0.0
