@@ -41,7 +41,7 @@ def _docstring_lines(filepath: Path) -> set[int]:
     """Return set of 1-based line numbers occupied by module/class/function docstrings."""
     lines: set[int] = set()
     try:
-        tree = ast.parse(filepath.read_text())
+        tree = ast.parse(filepath.read_text(encoding="utf-8"))
     except SyntaxError:
         return lines
 
@@ -63,7 +63,7 @@ def _is_barrel_init(filepath: Path) -> bool:
     if filepath.name != "__init__.py":
         return False
     try:
-        tree = ast.parse(filepath.read_text())
+        tree = ast.parse(filepath.read_text(encoding="utf-8"))
     except SyntaxError:
         return False
     for node in ast.iter_child_nodes(tree):
@@ -84,7 +84,7 @@ def _is_barrel_init(filepath: Path) -> bool:
 def _count_code_lines(filepath: Path) -> int:
     """Count non-blank, non-comment, non-docstring lines."""
     try:
-        raw_lines = filepath.read_text().splitlines()
+        raw_lines = filepath.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError):
         return 0
 
@@ -106,7 +106,7 @@ def _count_code_lines(filepath: Path) -> int:
 def _count_shell_code_lines(filepath: Path) -> int:
     """Count non-blank, non-comment lines for shell scripts."""
     try:
-        raw_lines = filepath.read_text().splitlines()
+        raw_lines = filepath.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError):
         return 0
 

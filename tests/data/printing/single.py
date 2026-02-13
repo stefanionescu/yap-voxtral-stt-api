@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from tests.params.config import MS_PER_S
+from params.config import MS_PER_S
 
 from .fmt import metrics_header
 from .common import print_segment_metrics

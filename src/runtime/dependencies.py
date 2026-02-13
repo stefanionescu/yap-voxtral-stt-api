@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
-from dataclasses import dataclass
 
+from src.state import RuntimeDeps
 from src.realtime.bridge import RealtimeBridge
 from src.handlers.connections import ConnectionManager
 from src.config.models import VOXTRAL_SERVED_MODEL_NAME
@@ -14,19 +13,6 @@ from src.config.limits import MAX_CONCURRENT_CONNECTIONS
 from .vllm_engine import build_vllm_realtime
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class RuntimeDeps:
-    connections: ConnectionManager
-    realtime_bridge: RealtimeBridge
-    _engine_stack: Any
-
-    async def shutdown(self) -> None:
-        try:
-            await self._engine_stack.aclose()
-        except Exception:
-            logger.exception("runtime shutdown failed")
 
 
 async def build_runtime_deps() -> RuntimeDeps:

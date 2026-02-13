@@ -20,11 +20,12 @@ ignore = ["D", "ANN", "COM812", "ISC001"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "PLR2004"]
+"checks/**/*.py" = ["S101", "PLR2004"]
 "linting/**/*.py" = ["N802", "UP038"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
-known-first-party = ["src", "tests"]
+known-first-party = ["src", "tests", "checks", "client", "params", "utils", "data"]
 length-sort = true
 length-sort-straight = true
 force-sort-within-sections = true
@@ -55,7 +56,7 @@ no_implicit_optional = false
 [tool.isort]
 profile = "black"
 line_length = 120
-known_first_party = ["src", "tests"]
+known_first_party = ["src", "tests", "checks", "client", "params", "utils", "data"]
 combine_as_imports = true
 length_sort = true
 length_sort_straight = true

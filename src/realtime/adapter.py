@@ -8,7 +8,8 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from .state import EnvelopeState
+from src.state import EnvelopeState
+
 from .envelope_ws import EnvelopeWebSocket
 
 logger = logging.getLogger(__name__)
@@ -26,9 +27,7 @@ class RealtimeConnectionAdapter:
         self._state = state
         self._allowed_model_name = allowed_model_name
 
-        from vllm.entrypoints.openai.realtime.connection import (  # noqa: PLC0415
-            RealtimeConnection,
-        )
+        from vllm.entrypoints.openai.realtime.connection import RealtimeConnection  # noqa: PLC0415
 
         self._conn: RealtimeConnection | None = None
 

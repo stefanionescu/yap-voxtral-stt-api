@@ -1,4 +1,4 @@
-"""Per-connection state for wrapping vLLM realtime frames in a JSON envelope."""
+"""Per-connection state for wrapping realtime frames in a JSON envelope."""
 
 from __future__ import annotations
 

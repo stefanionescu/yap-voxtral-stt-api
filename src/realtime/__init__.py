@@ -1,4 +1,5 @@
-from .state import EnvelopeState
+from src.state import EnvelopeState
+
 from .bridge import RealtimeBridge
 from .adapter import RealtimeConnectionAdapter
 

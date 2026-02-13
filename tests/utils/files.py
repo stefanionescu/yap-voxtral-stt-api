@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 import subprocess  # noqa: S404
-import shutil
 
 import numpy as np
 
@@ -19,7 +19,7 @@ try:
 except Exception:  # pragma: no cover
     soxr = None
 
-from tests.params import config
+from params import config
 
 SAMPLES_DIR = Path(config.SAMPLES_DIR_NAME)
 EXTS = config.FILE_EXTS
@@ -80,8 +80,7 @@ def _resample_to_16k(x: np.ndarray, sr: int) -> np.ndarray:
 
     if soxr is not None:
         # soxr expects float32 for best results.
-        xf = x.astype(np.float32, copy=False)
-        y = soxr.resample(xf, sr, config.FFMPEG_DECODE_SR_16K)
+        y = soxr.resample(x.astype(np.float32, copy=False), sr, config.FFMPEG_DECODE_SR_16K)
         return y.astype(np.float32, copy=False)
 
     # librosa is part of runtime deps; use it as a fallback.
@@ -103,7 +102,9 @@ def file_to_pcm16_mono_16k(path: str) -> bytes:
             pcm = (x * 32767.0).astype(np.int16)
             return pcm.tobytes()
         except Exception:
-            pass
+            # Fall back to ffmpeg if decoding/resampling fails.
+            pcm, _ = _ffmpeg_decode_to_pcm16_mono_16k(path)
+            return pcm.astype(np.int16, copy=False).tobytes()
 
     # Fallback to ffmpeg if available.
     pcm, _ = _ffmpeg_decode_to_pcm16_mono_16k(path)
@@ -114,9 +115,10 @@ def file_duration_seconds(path: str) -> float:
     if sf is not None:
         try:
             f = sf.SoundFile(path)
-            return float(len(f) / f.samplerate)
         except Exception:
-            pass
+            f = None
+        if f is not None:
+            return float(len(f) / f.samplerate)
 
     # PCM WAV fallback without external dependencies.
     try:
@@ -128,7 +130,8 @@ def file_duration_seconds(path: str) -> float:
             if sr > 0:
                 return float(frames / sr)
     except Exception:
-        pass
+        pcm, sr = _ffmpeg_decode_to_pcm16_mono_16k(path)
+        return float(len(pcm) / sr)
 
     pcm, sr = _ffmpeg_decode_to_pcm16_mono_16k(path)
     return float(len(pcm) / sr)

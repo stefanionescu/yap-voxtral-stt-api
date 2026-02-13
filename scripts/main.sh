@@ -15,7 +15,7 @@ HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${SERVER_PORT}/healthz}"
 HEALTH_TIMEOUT_S="${HEALTH_TIMEOUT_S:-600}"
 
 VENV_DIR="${VENV_DIR:-${ROOT_DIR}/.venv}"
-VLLM_WHEELS_INDEX_URL="${VLLM_WHEELS_INDEX_URL:-https://wheels.vllm.ai/nightly}"
+VLLM_WHEELS_INDEX_URL="${VLLM_WHEELS_INDEX_URL:-https://wheels.vllm.ai/nightly/cu130}"
 
 require_env() {
   local name="$1"
@@ -51,8 +51,10 @@ install_deps() {
 
   if command -v uv >/dev/null 2>&1; then
     log_info "[deps] Using uv pip (recommended for vLLM nightlies)"
-    uv pip install -U pip
-    uv pip install -r "${ROOT_DIR}/requirements.txt" --extra-index-url "${VLLM_WHEELS_INDEX_URL}" --torch-backend=auto
+    uv pip install --python "${VENV_DIR}/bin/python" -U pip
+    uv pip install --python "${VENV_DIR}/bin/python" -r "${ROOT_DIR}/requirements.txt" \
+      --extra-index-url "${VLLM_WHEELS_INDEX_URL}" \
+      --torch-backend=cu130
   else
     log_warn "[deps] uv not found; falling back to pip. You may need to install a compatible CUDA torch wheel manually."
     "${VENV_DIR}/bin/python" -m pip install -U pip
@@ -113,7 +115,6 @@ await_health() {
 main() {
   log_info "[main] Voxtral STT server"
   require_env "VOXTRAL_API_KEY"
-  require_env "MAX_CONCURRENT_CONNECTIONS"
 
   ensure_venv
   install_deps

@@ -26,7 +26,7 @@ def _is_dataclass_class(node: ast.ClassDef) -> bool:
 
 def _collect_top_level_classes(filepath: Path) -> list[str]:
     try:
-        source = filepath.read_text()
+        source = filepath.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return []
 

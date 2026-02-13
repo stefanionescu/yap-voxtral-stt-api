@@ -92,7 +92,7 @@ def _count_function_lines(
 
 def _collect_violations(filepath: Path) -> list[str]:
     try:
-        source = filepath.read_text()
+        source = filepath.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return []
 

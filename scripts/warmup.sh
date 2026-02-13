@@ -17,9 +17,9 @@ log_info "[warmup] Installing dev deps (clients)"
 "${VENV_DIR}/bin/python" -m pip install -r "${ROOT_DIR}/requirements-dev.txt" >/dev/null
 
 log_section "[warmup] Running warmup client"
-"${VENV_DIR}/bin/python" tests/e2e/warmup.py
+"${VENV_DIR}/bin/python" tests/warmup.py
 
 log_section "[warmup] Running small bench (concurrency=8)"
-"${VENV_DIR}/bin/python" tests/e2e/bench.py --requests 8 --concurrency 8
+"${VENV_DIR}/bin/python" tests/bench.py --n 8 --concurrency 8
 
 log_info "[warmup] Done"

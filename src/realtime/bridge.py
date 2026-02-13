@@ -6,7 +6,8 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from .state import EnvelopeState
+from src.state import EnvelopeState
+
 from .adapter import RealtimeConnectionAdapter
 
 

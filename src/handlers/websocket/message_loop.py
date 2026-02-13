@@ -5,8 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import contextlib
-from typing import Any
-from typing import Literal
+from typing import Any, Literal
 from collections.abc import Callable, Awaitable
 
 from fastapi import WebSocket, WebSocketDisconnect

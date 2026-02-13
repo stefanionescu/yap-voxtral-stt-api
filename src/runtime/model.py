@@ -7,12 +7,7 @@ import json
 import logging
 from pathlib import Path
 
-from ..config.models import (
-    VOXTRAL_MODEL_ID,
-    VOXTRAL_MODEL_DIR,
-    VOXTRAL_TEKKEN_FILENAME,
-    VOXTRAL_TRANSCRIPTION_DELAY_MS,
-)
+from ..config.models import VOXTRAL_MODEL_ID, VOXTRAL_MODEL_DIR, VOXTRAL_TEKKEN_FILENAME, VOXTRAL_TRANSCRIPTION_DELAY_MS
 
 logger = logging.getLogger(__name__)
 

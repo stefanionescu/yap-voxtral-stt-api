@@ -1,3 +1,3 @@
-from . import config
+"""Parameters package (re-exports config subpackage)."""
 
-__all__ = ["config"]
+from . import config  # noqa: F401

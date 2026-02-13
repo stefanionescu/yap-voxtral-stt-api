@@ -8,7 +8,7 @@ Streaming speech-to-text (STT) server for **Mistral Voxtral Realtime** using **v
 - JSON envelope: `{type, session_id, request_id, payload}`
 - vLLM Realtime semantics inside the envelope (`session.update`, `input_audio_buffer.*`, `transcription.*`)
 - API key auth, connection cap, idle timeout, hard max duration, rate limits
-- Test clients + benchmarks (warmup, bench, idle, max-duration, live)
+- Test clients + benchmarks (warmup, bench, idle, convo, remote)
 
 This repo uses pinned dependencies, scripts for lifecycle management, and deterministic
 test/benchmark clients.
@@ -39,12 +39,13 @@ test/benchmark clients.
 
 For running the server:
 - NVIDIA GPU host (L40S recommended) with a working CUDA driver stack.
+- CUDA 13 runtime for the Python stack (the launcher installs cu130 wheels).
 - Python 3.11 recommended (the scripts will use `python3.11` if available).
 - `uv` recommended (used for GPU-friendly installs and PyTorch wheel selection).
 
 For running test clients (no GPU required):
 - Python 3.11+
-- `ffmpeg` available on `PATH` if you stream MP3/OGG samples (clients fall back to `ffmpeg` for decoding).
+- `ffmpeg` is optional (WAV decoding works without it; other formats may use it as a fallback).
 
 ## Quickstart (GPU Server)
 
@@ -52,7 +53,7 @@ Set required environment variables:
 
 ```bash
 export VOXTRAL_API_KEY="secret_token"       # required for every /ws connection
-export MAX_CONCURRENT_CONNECTIONS=100       # required capacity guard (default config is 100)
+export MAX_CONCURRENT_CONNECTIONS=100       # optional (default: 100)
 export HF_TOKEN="hf_your_token"             # recommended for model downloads
 ```
 
@@ -132,33 +133,28 @@ Then point clients at a running server:
 
 ```bash
 export VOXTRAL_API_KEY="secret_token"
-python tests/e2e/warmup.py --server localhost:8000
+python tests/warmup.py --server localhost:8000
 ```
 
 ## Test Clients
 
-All test clients live under `tests/e2e/`:
+All runnable client scripts live under `tests/`:
 
 - Sample audio lives under `samples/`.
-- `tests/e2e/warmup.py` – one utterance (default: `samples/mid.wav`) + metrics.
-- `tests/e2e/bench.py` – concurrent load generator with p50/p95 summaries.
-- `tests/e2e/idle.py` – validates idle timeout close behavior (default: code `4000`).
-- `tests/e2e/max_duration.py` – validates hard max duration close behavior (default: code `4003`).
-- `tests/e2e/live.py` – interactive client for manual debugging (send envelopes by hand).
+- `tests/warmup.py` – one utterance (default: `samples/mid.wav`) + metrics.
+- `tests/bench.py` – concurrent load generator with p50/p95 summaries.
+- `tests/idle.py` – validates idle timeout close behavior (default: code `4000`).
+- `tests/convo.py` – two utterances over one WebSocket connection.
+- `tests/remote.py` – warmup-equivalent client for remote GPU deployments.
 
 Examples:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/warmup.py --server localhost:8000 --rtf 2.0
-VOXTRAL_API_KEY=secret_token python tests/e2e/bench.py --server localhost:8000 --requests 64 --concurrency 64 --rtf 2.0
-VOXTRAL_API_KEY=secret_token python tests/e2e/idle.py --server localhost:8000
-```
-
-Max duration is 90 minutes by default; to test quickly, run the server with a small value:
-
-```bash
-WS_MAX_CONNECTION_DURATION_S=2 bash scripts/main.sh
-VOXTRAL_API_KEY=secret_token python tests/e2e/max_duration.py --server localhost:8000 --expect-seconds 2 --grace-seconds 5
+VOXTRAL_API_KEY=secret_token python tests/warmup.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python tests/bench.py --server localhost:8000 --n 64 --concurrency 64
+VOXTRAL_API_KEY=secret_token python tests/idle.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python tests/convo.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python tests/remote.py --server localhost:8000
 ```
 
 ## Stopping and Restarting

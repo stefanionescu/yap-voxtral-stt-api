@@ -64,12 +64,11 @@ This repo pins `vllm==...` in `requirements.txt` but expects GPU hosts to instal
 nightly wheel index. `scripts/main.sh` does this automatically when `uv` is available:
 
 ```bash
-VLLM_WHEELS_INDEX_URL=https://wheels.vllm.ai/nightly bash scripts/main.sh
+VLLM_WHEELS_INDEX_URL=https://wheels.vllm.ai/nightly/cu130 bash scripts/main.sh
 ```
 
 Key points:
-- The launcher prefers `uv pip` and sets `--torch-backend=auto` so the correct CUDA PyTorch wheel
-  is selected for the host.
+- The launcher prefers `uv pip` and installs cu130 wheels (`--torch-backend=cu130`).
 - If `uv` is not installed, the script falls back to `pip`. In that case you may need to install a
   compatible CUDA `torch` wheel manually.
 
@@ -277,32 +276,31 @@ All clients speak the same `/ws` envelope protocol.
 Warmup:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/warmup.py --server localhost:8000 --rtf 2.0 --file mid.wav
+VOXTRAL_API_KEY=secret_token python tests/warmup.py --server localhost:8000 --file mid.wav
 ```
 
 Benchmark:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/bench.py --server localhost:8000 --requests 100 --concurrency 100 --rtf 2.0
+VOXTRAL_API_KEY=secret_token python tests/bench.py --server localhost:8000 --n 100 --concurrency 100 --file mid.wav
 ```
 
 Idle timeout:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/idle.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python tests/idle.py --server localhost:8000
 ```
 
-Max duration (run server with a small max duration first):
+Conversation (two utterances over one connection):
 
 ```bash
-WS_MAX_CONNECTION_DURATION_S=2 bash scripts/main.sh
-VOXTRAL_API_KEY=secret_token python tests/e2e/max_duration.py --server localhost:8000 --expect-seconds 2 --grace-seconds 5
+VOXTRAL_API_KEY=secret_token python tests/convo.py --server localhost:8000
 ```
 
-Interactive live client:
+Remote client:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/live.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python tests/remote.py --server localhost:8000
 ```
 
 ## Troubleshooting
@@ -310,8 +308,8 @@ VOXTRAL_API_KEY=secret_token python tests/e2e/live.py --server localhost:8000
 ### vLLM Install Fails
 
 - Confirm you are using `uv` on a GPU host.
-- Ensure `VLLM_WHEELS_INDEX_URL` points to the nightly repo (`https://wheels.vllm.ai/nightly`).
-- If you see PyTorch/CUDA mismatches, install a CUDA-compatible torch wheel or rerun with `--torch-backend=auto`.
+- Ensure `VLLM_WHEELS_INDEX_URL` points to the cu130 wheel index (`https://wheels.vllm.ai/nightly/cu130`).
+- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/main.sh`).
 
 ### Model Download Is Slow or Fails
 

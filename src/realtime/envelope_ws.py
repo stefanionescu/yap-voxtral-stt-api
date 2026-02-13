@@ -8,9 +8,8 @@ from collections.abc import Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from src.state import EnvelopeState
 from src.config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
-
-from .state import EnvelopeState
 
 
 class EnvelopeWebSocket:
