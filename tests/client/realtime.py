@@ -242,7 +242,7 @@ class RealtimeClient:
                 recv.error = f"timeout waiting for transcription.done (>{timeout_s:.1f}s)"
             finally:
                 ping_task.cancel()
-                with contextlib.suppress(Exception):
+                with contextlib.suppress(asyncio.CancelledError, Exception):
                     await ping_task
 
             # Graceful close
@@ -252,7 +252,7 @@ class RealtimeClient:
             self.close_elapsed_s = time.perf_counter() - close_start
 
             recv_task.cancel()
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(asyncio.CancelledError, Exception):
                 await recv_task
 
         finish_ts = time.perf_counter()
