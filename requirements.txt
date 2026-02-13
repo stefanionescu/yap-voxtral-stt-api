@@ -4,12 +4,13 @@
 # wheel index in GPU environments. See README/ADVANCED and scripts/main.sh for
 # the exact install command.
 
-fastapi>=0.115.8
+fastapi==0.115.8
+starlette==0.45.3
 uvicorn[standard]==0.34.0
 orjson==3.10.15
-pydantic>=2.12.0,<3
+pydantic==2.12.5
 
-huggingface_hub>=0.34.0,<1
+huggingface_hub==0.34.0
 numpy==2.2.2
 
 # Audio decoding/processing (required for Voxtral realtime serving)
@@ -18,4 +19,4 @@ soundfile==0.13.1
 soxr==0.5.0.post1
 
 # vLLM (installed from wheels.vllm.ai/nightly on GPU machines)
-vllm
+vllm==0.16.0rc2.dev160+gb86bf4417

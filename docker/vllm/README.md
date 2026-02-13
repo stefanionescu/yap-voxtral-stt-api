@@ -8,6 +8,7 @@ Key notes:
 - The official model guidance recommends installing vLLM from the nightly wheel
   index (`https://wheels.vllm.ai/nightly`) and using the audio deps stack.
 - You must provide `VOXTRAL_API_KEY` at runtime.
+- The Dockerfile installs deps via `uv` and accepts `VLLM_WHEELS_INDEX_URL` as a build arg.
 
 Example run (after building your image):
 ```bash
@@ -17,4 +18,3 @@ docker run --rm -it --gpus all -p 8000:8000 \
   -e MAX_CONCURRENT_CONNECTIONS=100 \
   yourimage:tag
 ```
-
