@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import subprocess  # noqa: S404
+import shutil
 
 import numpy as np
 
@@ -12,6 +13,11 @@ try:
     import soundfile as sf  # Optional; we fall back to ffmpeg if unavailable
 except Exception:  # pragma: no cover
     sf = None
+
+try:
+    import soxr  # High-quality resampling without requiring ffmpeg
+except Exception:  # pragma: no cover
+    soxr = None
 
 from tests.params import config
 
@@ -38,6 +44,8 @@ def find_sample_by_name(filename: str) -> str | None:
 
 
 def _ffmpeg_decode_to_pcm16_mono_16k(path: str) -> tuple[np.ndarray, int]:
+    if shutil.which("ffmpeg") is None:
+        raise FileNotFoundError("ffmpeg not found (required for decoding this file type)")
     cmd = [
         "ffmpeg",
         "-nostdin",
@@ -65,22 +73,41 @@ def _ffmpeg_decode_to_pcm16_mono_16k(path: str) -> tuple[np.ndarray, int]:
     return pcm, config.FFMPEG_DECODE_SR_16K
 
 
+def _resample_to_16k(x: np.ndarray, sr: int) -> np.ndarray:
+    """Resample mono audio to 16kHz."""
+    if sr == config.FFMPEG_DECODE_SR_16K:
+        return x
+
+    if soxr is not None:
+        # soxr expects float32 for best results.
+        xf = x.astype(np.float32, copy=False)
+        y = soxr.resample(xf, sr, config.FFMPEG_DECODE_SR_16K)
+        return y.astype(np.float32, copy=False)
+
+    # librosa is part of runtime deps; use it as a fallback.
+    import librosa  # noqa: PLC0415
+
+    y = librosa.resample(x.astype(np.float32, copy=False), orig_sr=sr, target_sr=config.FFMPEG_DECODE_SR_16K)
+    return y.astype(np.float32, copy=False)
+
+
 def file_to_pcm16_mono_16k(path: str) -> bytes:
     """Load arbitrary audio file and return PCM16 mono @16k bytes."""
     if sf is not None:
         try:
-            x, sr = sf.read(path, dtype="int16", always_2d=False)
+            x, sr = sf.read(path, dtype="float32", always_2d=False)
             if getattr(x, "ndim", 1) > 1:
                 x = x[:, 0]
-            if sr != config.FFMPEG_DECODE_SR_16K:
-                pcm, _ = _ffmpeg_decode_to_pcm16_mono_16k(path)
-                return pcm.tobytes()
-            return x.tobytes()
-        except Exception:
-            pcm, _ = _ffmpeg_decode_to_pcm16_mono_16k(path)
+            x = _resample_to_16k(x, int(sr))
+            x = np.clip(x, -1.0, 1.0)
+            pcm = (x * 32767.0).astype(np.int16)
             return pcm.tobytes()
+        except Exception:
+            pass
+
+    # Fallback to ffmpeg if available.
     pcm, _ = _ffmpeg_decode_to_pcm16_mono_16k(path)
-    return pcm.tobytes()
+    return pcm.astype(np.int16, copy=False).tobytes()
 
 
 def file_duration_seconds(path: str) -> float:
@@ -89,8 +116,20 @@ def file_duration_seconds(path: str) -> float:
             f = sf.SoundFile(path)
             return float(len(f) / f.samplerate)
         except Exception:
-            pcm, sr = _ffmpeg_decode_to_pcm16_mono_16k(path)
-            return float(len(pcm) / sr)
+            pass
+
+    # PCM WAV fallback without external dependencies.
+    try:
+        import wave  # noqa: PLC0415
+
+        with wave.open(path, "rb") as wf:
+            frames = wf.getnframes()
+            sr = wf.getframerate()
+            if sr > 0:
+                return float(frames / sr)
+    except Exception:
+        pass
+
     pcm, sr = _ffmpeg_decode_to_pcm16_mono_16k(path)
     return float(len(pcm) / sr)
 
