@@ -47,6 +47,15 @@ def _patch_tekken_json(model_dir: Path, *, delay_ms: int) -> bool:
     return True
 
 
+def _looks_like_snapshot(model_dir: Path) -> bool:
+    # Voxtral repos don't necessarily ship a transformers-style config.json.
+    if not (model_dir / "params.json").exists():
+        return False
+    if not (model_dir / VOXTRAL_TEKKEN_FILENAME).exists():
+        return False
+    return any(model_dir.glob("*.safetensors"))
+
+
 def ensure_voxtral_snapshot() -> Path:
     """Ensure we have a writable local model directory and tekken delay patch applied."""
     delay_ms = _validate_delay_ms(int(VOXTRAL_TRANSCRIPTION_DELAY_MS))
@@ -54,8 +63,7 @@ def ensure_voxtral_snapshot() -> Path:
     model_dir = VOXTRAL_MODEL_DIR
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    # If it already looks like a HF snapshot (config.json exists), skip download.
-    if not (model_dir / "config.json").exists():
+    if not _looks_like_snapshot(model_dir):
         token = (os.getenv("HF_TOKEN") or "").strip() or None
 
         # Local snapshot avoids mutating the HF cache and lets us patch tekken.json safely.
