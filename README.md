@@ -1,31 +1,66 @@
 # Yap Voxtral STT API
 
-Streaming speech-to-text (STT) server for **Mistral Voxtral Realtime** using **vLLM**.
+Streaming speech-to-text (STT) server for **Mistral Voxtral Realtime** using **vLLM Realtime**.
+
+- Default model: `mistralai/Voxtral-Mini-4B-Realtime-2602` (override with `VOXTRAL_MODEL_ID`)
 
 - FastAPI + WebSocket endpoint: `GET /ws`
-- Yap-style message envelope: `{type, session_id, request_id, payload}`
-- vLLM Realtime protocol semantics inside the envelope (`session.update`, `input_audio_buffer.*`, `transcription.*`)
-- Capacity guard, ping/pong keepalive, and idle timeout
+- Yap-style JSON envelope: `{type, session_id, request_id, payload}`
+- vLLM Realtime semantics inside the envelope (`session.update`, `input_audio_buffer.*`, `transcription.*`)
+- API key auth, connection cap, idle timeout, hard max duration, rate limits
+- Test clients + benchmarks (warmup, bench, idle, max-duration, live)
+
+This repo is shaped like the other Yap services: pinned dependencies, scripts for lifecycle
+management, and deterministic test/benchmark clients.
 
 ## Contents
 
-- [Quickstart](#quickstart)
-- [WebSocket API](#websocket-api)
+- [Key Features](#key-features)
+- [Prerequisites](#prerequisites)
+- [Quickstart (GPU Server)](#quickstart-gpu-server)
+- [Health Check](#health-check)
+- [WebSocket API (Overview)](#websocket-api-overview)
+- [Local Test Dependencies (CPU-only)](#local-test-dependencies-cpu-only)
+- [Test Clients](#test-clients)
 - [Stopping and Restarting](#stopping-and-restarting)
-- [Testing](#testing)
 - [Linting](#linting)
 - [Docker](#docker)
-- [Advanced Guide](ADVANCED.md)
+- [Advanced Guide](#advanced-guide)
 
-## Quickstart
+## Key Features
+
+- vLLM Realtime-native Voxtral serving (no custom decoding loop).
+- Yap-style envelope protocol for easy integration with existing Yap client logic.
+- Strong connection lifecycle enforcement: idle timeout (150s), max duration (90 minutes), and a capacity guard (`MAX_CONCURRENT_CONNECTIONS`).
+- Model-inherent “lookahead” latency is configurable via `VOXTRAL_TRANSCRIPTION_DELAY_MS` (patched into `tekken.json`).
+- Bench harness for concurrency sweeps (8 / 32 / 64 / 100).
+
+## Prerequisites
+
+For running the server:
+- NVIDIA GPU host (L40S recommended) with a working CUDA driver stack.
+- Python 3.11 recommended (the scripts will use `python3.11` if available).
+- `uv` recommended (used for GPU-friendly installs and PyTorch wheel selection).
+
+For running test clients (no GPU required):
+- Python 3.11+
+- `ffmpeg` available on `PATH` if you stream MP3/OGG samples (clients fall back to `ffmpeg` for decoding).
+
+## Quickstart (GPU Server)
 
 Set required environment variables:
 
 ```bash
-export VOXTRAL_API_KEY="secret_token"
-export HF_TOKEN="hf_your_token"
-export MAX_CONCURRENT_CONNECTIONS=100
-export WS_MAX_CONNECTION_DURATION_S=5400  # 90 minutes (optional)
+export VOXTRAL_API_KEY="secret_token"       # required for every /ws connection
+export MAX_CONCURRENT_CONNECTIONS=100       # required capacity guard (default config is 100)
+export HF_TOKEN="hf_your_token"             # recommended for model downloads
+```
+
+Optional but recommended knobs:
+
+```bash
+export VOXTRAL_TRANSCRIPTION_DELAY_MS=400   # multiples of 80ms (80..2400)
+export WS_MAX_CONNECTION_DURATION_S=5400    # default: 90 minutes
 ```
 
 Start the server:
@@ -34,72 +69,97 @@ Start the server:
 bash scripts/main.sh
 ```
 
-Health check:
+Notes:
+- `scripts/main.sh` creates a venv at `.venv`, installs pinned deps from `requirements.txt`,
+  and tails `server.log`.
+- Ctrl+C detaches from the log tail only. Stop the server with `bash scripts/stop.sh`.
+- Logs: `tail -f server.log`
+- Status: `bash scripts/status.sh`
+- Bind/port: set `SERVER_BIND_HOST` / `SERVER_PORT` (defaults: `0.0.0.0:8000`)
+
+## Health Check
 
 ```bash
 curl -s http://localhost:8000/healthz
 ```
 
-## WebSocket API
+## WebSocket API (Overview)
 
-Connect:
+Connect (query parameter auth):
 
 ```text
 ws://server:8000/ws?api_key=VOXTRAL_API_KEY
 ```
 
-All messages use this envelope:
+All messages are JSON text frames with this envelope:
 
 ```json
 {
   "type": "...",
   "session_id": "stable-user-id",
   "request_id": "utterance-id",
-  "payload": { }
+  "payload": {}
 }
 ```
 
-### Ping / End / Cancel
-
-```json
-{"type":"ping","session_id":"s1","request_id":"r1","payload":{}}
-{"type":"end","session_id":"s1","request_id":"r2","payload":{}}
-{"type":"cancel","session_id":"s1","request_id":"r3","payload":{"reason":"client_request"}}
-```
-
-### Realtime STT (vLLM semantics)
-
-1. (Optional) update the session model (this server only supports one model):
-
-```json
-{"type":"session.update","session_id":"s1","request_id":"r1","payload":{"model":"mistralai/Voxtral-Mini-4B-Realtime-2602"}}
-```
-
-2. Start an utterance:
+Minimal transcription flow:
 
 ```json
 {"type":"input_audio_buffer.commit","session_id":"s1","request_id":"utt-1","payload":{"final":false}}
-```
-
-3. Stream audio chunks (PCM16 16kHz mono, base64):
-
-```json
-{"type":"input_audio_buffer.append","session_id":"s1","request_id":"utt-1","payload":{"audio":"<base64 pcm16>"}} 
-```
-
-4. Finalize:
-
-```json
+{"type":"input_audio_buffer.append","session_id":"s1","request_id":"utt-1","payload":{"audio":"<base64 pcm16 16k mono>"}} 
 {"type":"input_audio_buffer.commit","session_id":"s1","request_id":"utt-1","payload":{"final":true}}
 ```
 
-Server events (wrapped vLLM Realtime events):
+The server forwards vLLM Realtime events (same `type` values) inside the envelope, for example:
 - `session.created`, `session.updated`
-- `transcription.delta` (payload contains `delta`)
-- `transcription.done` (payload contains `text`)
+- `transcription.delta` (payload has `delta`)
+- `transcription.done` (payload has `text`)
 - `error`
 
-See `ADVANCED.md` for protocol details and test client examples.
+Full protocol details (close codes, error payload schema, lifecycle rules) are in `ADVANCED.md`.
+
+## Local Test Dependencies (CPU-only)
+
+To run the Python test clients on a laptop without installing vLLM/GPU wheels:
+
+```bash
+python3 -m venv .venv-local
+source .venv-local/bin/activate
+pip install -r requirements-local.txt
+```
+
+Then point clients at a running server:
+
+```bash
+export VOXTRAL_API_KEY="secret_token"
+python tests/e2e/warmup.py --server localhost:8000
+```
+
+## Test Clients
+
+All test clients live under `tests/e2e/`:
+
+- Sample audio lives under `samples/` (synced from `yap-stt-api`).
+- `tests/e2e/warmup.py` – one utterance (default: `samples/mid.wav`) + metrics.
+- `tests/e2e/bench.py` – concurrent load generator with p50/p95 summaries.
+- `tests/e2e/idle.py` – validates idle timeout close behavior (default: code `4000`).
+- `tests/e2e/max_duration.py` – validates hard max duration close behavior (default: code `4003`).
+- `tests/e2e/live.py` – interactive client for manual debugging (send envelopes by hand).
+
+Examples:
+
+```bash
+VOXTRAL_API_KEY=secret_token python tests/e2e/warmup.py --server localhost:8000 --rtf 2.0
+VOXTRAL_API_KEY=secret_token python tests/e2e/bench.py --server localhost:8000 --requests 64 --concurrency 64 --rtf 2.0
+VOXTRAL_API_KEY=secret_token python tests/e2e/idle.py --server localhost:8000
+```
+
+Max duration is 90 minutes by default; to test quickly, run the server with a small value:
+
+```bash
+WS_MAX_CONNECTION_DURATION_S=2 bash scripts/main.sh
+VOXTRAL_API_KEY=secret_token python tests/e2e/max_duration.py --server localhost:8000 --expect-seconds 2 --grace-seconds 5
+```
 
 ## Stopping and Restarting
 
@@ -108,53 +168,35 @@ bash scripts/stop.sh
 bash scripts/restart.sh
 ```
 
-Full cleanup:
+Full cleanup (wipes `.venv`, `models/`, logs):
+
 ```bash
 FULL_CLEANUP=1 bash scripts/stop.sh
-```
-
-## Testing
-
-Install client deps:
-
-```bash
-bash scripts/activate.sh
-pip install -r requirements-dev.txt
-```
-
-Warmup:
-```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/warmup.py
-```
-
-Benchmark:
-```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/bench.py --requests 32 --concurrency 32
-```
-
-Idle timeout:
-```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/idle.py
-```
-
-Max connection duration (server must be started with a small `WS_MAX_CONNECTION_DURATION_S` to test quickly):
-```bash
-VOXTRAL_API_KEY=secret_token python tests/e2e/max_duration.py --expect-seconds 2 --grace-seconds 5
 ```
 
 ## Linting
 
 ```bash
+bash scripts/activate.sh
 pip install -r requirements-dev.txt
 bash scripts/lint.sh
 bash scripts/lint.sh --fix
 ```
 
 Enable git hooks:
+
 ```bash
 git config core.hooksPath .githooks
 ```
 
 ## Docker
 
-See `docker/README.md`.
+This repo ships Docker scaffolding but does not publish images.
+
+- `docker/vllm/Dockerfile`
+- `docker/vllm/README.md`
+- `docker/README.md`
+
+## Advanced Guide
+
+See `ADVANCED.md`.

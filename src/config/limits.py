@@ -28,7 +28,9 @@ def _float_env(name: str, default: float) -> float:
 MAX_CONCURRENT_CONNECTIONS = _int_env("MAX_CONCURRENT_CONNECTIONS", 100)
 
 WS_MESSAGE_WINDOW_SECONDS = _float_env("WS_MESSAGE_WINDOW_SECONDS", 60.0)
-WS_MAX_MESSAGES_PER_WINDOW = _int_env("WS_MAX_MESSAGES_PER_WINDOW", 200)
+# STT streaming is message-heavy. With 80ms chunks, clients send ~750 append messages/minute.
+# Default high enough to support 20ms chunking (~3000/min) with headroom.
+WS_MAX_MESSAGES_PER_WINDOW = _int_env("WS_MAX_MESSAGES_PER_WINDOW", 5000)
 
 WS_CANCEL_WINDOW_SECONDS = _float_env("WS_CANCEL_WINDOW_SECONDS", WS_MESSAGE_WINDOW_SECONDS)
 WS_MAX_CANCELS_PER_WINDOW = _int_env("WS_MAX_CANCELS_PER_WINDOW", 50)
