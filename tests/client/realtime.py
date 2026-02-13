@@ -142,7 +142,10 @@ class RealtimeClient:
                     done_event.set()
                     return
         except websockets.exceptions.ConnectionClosed as exc:
-            recv.error = f"connection closed code={exc.code} reason={exc.reason}"
+            # If the caller already recorded a higher-level error (e.g. timeout),
+            # don't overwrite it with a generic close message.
+            if recv.error is None:
+                recv.error = f"connection closed code={exc.code} reason={exc.reason}"
             done_event.set()
 
     async def run_stream(
