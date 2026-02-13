@@ -15,12 +15,17 @@ WS_CLOSE_CLIENT_REQUEST_CODE = 1000
 WS_CLOSE_UNAUTHORIZED_CODE = 4001
 WS_CLOSE_BUSY_CODE = 4002
 WS_CLOSE_IDLE_CODE = 4000
+WS_CLOSE_MAX_DURATION_CODE = 4003
 
 WS_CLOSE_IDLE_REASON = "idle timeout"
+WS_CLOSE_MAX_DURATION_REASON = "max connection duration reached"
 
 # Idle watchdog
 WS_IDLE_TIMEOUT_S = float(os.getenv("WS_IDLE_TIMEOUT_S", "150"))
 WS_WATCHDOG_TICK_S = float(os.getenv("WS_WATCHDOG_TICK_S", "5"))
+
+# Hard max connection duration (mirrors yap-stt-api: 90 minutes).
+WS_MAX_CONNECTION_DURATION_S = float(os.getenv("WS_MAX_CONNECTION_DURATION_S", str(90 * 60)))
 
 # Errors (payload.code values)
 WS_ERROR_AUTH_FAILED = "authentication_failed"
@@ -39,9 +44,12 @@ __all__ = [
     "WS_CLOSE_UNAUTHORIZED_CODE",
     "WS_CLOSE_BUSY_CODE",
     "WS_CLOSE_IDLE_CODE",
+    "WS_CLOSE_MAX_DURATION_CODE",
     "WS_CLOSE_IDLE_REASON",
+    "WS_CLOSE_MAX_DURATION_REASON",
     "WS_IDLE_TIMEOUT_S",
     "WS_WATCHDOG_TICK_S",
+    "WS_MAX_CONNECTION_DURATION_S",
     "WS_ERROR_AUTH_FAILED",
     "WS_ERROR_SERVER_AT_CAPACITY",
     "WS_ERROR_INVALID_MESSAGE",

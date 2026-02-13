@@ -25,6 +25,7 @@ Set required environment variables:
 export VOXTRAL_API_KEY="secret_token"
 export HF_TOKEN="hf_your_token"
 export MAX_CONCURRENT_CONNECTIONS=100
+export WS_MAX_CONNECTION_DURATION_S=5400  # 90 minutes (optional)
 ```
 
 Start the server:
@@ -136,6 +137,11 @@ Idle timeout:
 VOXTRAL_API_KEY=secret_token python tests/e2e/idle.py
 ```
 
+Max connection duration (server must be started with a small `WS_MAX_CONNECTION_DURATION_S` to test quickly):
+```bash
+VOXTRAL_API_KEY=secret_token python tests/e2e/max_duration.py --expect-seconds 2 --grace-seconds 5
+```
+
 ## Linting
 
 ```bash
@@ -152,4 +158,3 @@ git config core.hooksPath .githooks
 ## Docker
 
 See `docker/README.md`.
-

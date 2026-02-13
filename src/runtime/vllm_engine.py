@@ -10,10 +10,13 @@ from typing import Any
 from src.config.models import VOXTRAL_MODEL_DIR, VOXTRAL_SERVED_MODEL_NAME
 from src.config.vllm import (
     VLLM_DTYPE,
+    VLLM_LOAD_FORMAT,
     VLLM_MAX_NUM_SEQS,
+    VLLM_CONFIG_FORMAT,
     VLLM_ENFORCE_EAGER,
     VLLM_MAX_MODEL_LEN,
     VLLM_KV_CACHE_DTYPE,
+    VLLM_TOKENIZER_MODE,
     VLLM_COMPILATION_CONFIG,
     VLLM_DISABLE_COMPILE_CACHE,
     VLLM_GPU_MEMORY_UTILIZATION,
@@ -59,6 +62,9 @@ async def build_vllm_realtime() -> tuple[Any, Any, Any, Any]:
         "max_num_batched_tokens": VLLM_MAX_NUM_BATCHED_TOKENS,
         "enforce_eager": VLLM_ENFORCE_EAGER,
         "kv_cache_dtype": VLLM_KV_CACHE_DTYPE,
+        "tokenizer_mode": VLLM_TOKENIZER_MODE,
+        "config_format": VLLM_CONFIG_FORMAT,
+        "load_format": VLLM_LOAD_FORMAT,
         "disable_compile_cache": VLLM_DISABLE_COMPILE_CACHE,
         "compilation_config": VLLM_COMPILATION_CONFIG,
         "served_model_name": VOXTRAL_SERVED_MODEL_NAME,
