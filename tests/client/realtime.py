@@ -217,10 +217,33 @@ class RealtimeClient:
                 })
             )
 
+            async def _app_ping_loop() -> None:
+                try:
+                    while not done_event.is_set():
+                        await asyncio.sleep(config.WS_APP_PING_INTERVAL_S)
+                        if done_event.is_set():
+                            return
+                        await ws.send(
+                            json.dumps({
+                                "type": "ping",
+                                "session_id": session_id,
+                                "request_id": request_id,
+                                "payload": {},
+                            })
+                        )
+                except Exception:
+                    return
+
+            ping_task = asyncio.create_task(_app_ping_loop())
+
             try:
                 await asyncio.wait_for(done_event.wait(), timeout=timeout_s)
             except TimeoutError:
                 recv.error = f"timeout waiting for transcription.done (>{timeout_s:.1f}s)"
+            finally:
+                ping_task.cancel()
+                with contextlib.suppress(Exception):
+                    await ping_task
 
             # Graceful close
             close_start = time.perf_counter()

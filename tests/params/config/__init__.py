@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .defaults import MS_PER_S, DEFAULT_TIMEOUT_S
-from .websocket import WS_PING_TIMEOUT_S, WS_PING_INTERVAL_S
+from .websocket import WS_APP_PING_INTERVAL_S, WS_PING_TIMEOUT_S, WS_PING_INTERVAL_S
 from .audio import (
     CHUNK_MS,
     FILE_EXTS,
@@ -24,4 +24,5 @@ __all__ = [
     "FILE_EXTS",
     "WS_PING_INTERVAL_S",
     "WS_PING_TIMEOUT_S",
+    "WS_APP_PING_INTERVAL_S",
 ]
