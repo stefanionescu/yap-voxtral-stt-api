@@ -1,7 +1,7 @@
 [dockerignore]
 mode = "engine_local"
-required_files = ["docker/vllm/.dockerignore"]
-forbidden_files = [".dockerignore"]
+required_files = [".dockerignore"]
+forbidden_files = ["docker/vllm/.dockerignore"]
 allowed_extra_files = []
 allow_only_listed = true
 first_effective_rule = "**"

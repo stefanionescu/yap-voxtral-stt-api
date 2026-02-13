@@ -26,4 +26,3 @@ done
 log_err "[health] ✗ server did not become healthy within ${HEALTH_TIMEOUT_S}s"
 log_err "[health] tail -n 200 ${ROOT_DIR}/server.log"
 exit 1
-

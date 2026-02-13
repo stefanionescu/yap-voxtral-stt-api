@@ -35,4 +35,3 @@ setsid "${VENV_DIR}/bin/python" -m uvicorn src.server:app \
 pid=$!
 echo "${pid}" >"${pid_file}"
 log_info "[start] pid=${pid}"
-

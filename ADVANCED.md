@@ -4,6 +4,7 @@ This guide covers advanced operations and deep-dive details for serving **Mistra
 via **vLLM Realtime** behind a JSON WebSocket envelope.
 
 See the main [README](README.md) for quickstart and basic usage.
+See `.env.example` for a complete list of supported environment variables.
 
 ## Contents
 
@@ -13,7 +14,7 @@ See the main [README](README.md) for quickstart and basic usage.
 - [vLLM Installation Notes](#vllm-installation-notes)
 - [vLLM Configuration](#vllm-configuration)
 - [Scripts and Lifecycle](#scripts-and-lifecycle)
-- [API — WebSocket `/ws`](#api--websocket-ws)
+- [API — WebSocket `/api/asr-streaming`](#api--websocket-apiasr-streaming)
 - [Streaming Audio Details](#streaming-audio-details)
 - [Connection Management](#connection-management)
 - [Capacity and Latency Notes](#capacity-and-latency-notes)
@@ -25,7 +26,7 @@ See the main [README](README.md) for quickstart and basic usage.
 - `GET /healthz` – No authentication required
 - `GET /health` – No authentication required
 - `GET /` – No authentication required
-- `GET /ws` – **Requires** API key
+- `GET /api/asr-streaming` – **Requires** API key
 
 ## Model Snapshot and `tekken.json` Patching
 
@@ -75,10 +76,10 @@ Key points:
 Validation:
 
 ```bash
-bash scripts/doctor.sh
+bash scripts/lib/doctor.sh
 ```
 
-`scripts/doctor.sh` fails unless `torch.version.cuda` is `13.x`.
+`scripts/lib/doctor.sh` fails unless `torch.version.cuda` is `13.x`.
 
 ## vLLM Configuration
 
@@ -127,12 +128,12 @@ The nuke mode is guarded by `NUKE=1` and removes:
 - repo runtime state (`.venv/`, `models/`, logs)
 - common caches under `~/.cache/` (HF/torch/vLLM/triton/uv/pip)
 
-## API — WebSocket `/ws`
+## API — WebSocket `/api/asr-streaming`
 
 This server exposes a single WebSocket endpoint:
 
 ```text
-ws://host:8000/ws
+ws://host:8000/api/asr-streaming
 ```
 
 All client messages are JSON text frames with an envelope:
@@ -302,7 +303,7 @@ Concurrency is often limited by KV-cache memory for long-lived streams. Practica
 
 ## Test Clients
 
-All clients speak the same `/ws` envelope protocol.
+All clients speak the same `/api/asr-streaming` envelope protocol.
 
 Warmup:
 
@@ -340,7 +341,7 @@ VOXTRAL_API_KEY=secret_token python tests/remote.py --server localhost:8000
 
 - Confirm you are using `uv` on a GPU host.
 - If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/steps/03_install_deps.sh`).
-- Run `bash scripts/doctor.sh` to confirm `torch.version.cuda` is `13.x`.
+- Run `bash scripts/lib/doctor.sh` to confirm `torch.version.cuda` is `13.x`.
 
 ### Model Download Is Slow or Fails
 

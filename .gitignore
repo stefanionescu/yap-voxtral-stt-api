@@ -6,6 +6,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.import_linter_cache/
 
 .venv/
 venv/
@@ -20,4 +21,3 @@ server.pid
 dist/
 build/
 *.egg-info/
-

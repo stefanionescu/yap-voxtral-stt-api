@@ -1,0 +1,12 @@
+# Deny everything by default. Allowlist only what the runtime image needs.
+**
+
+# Local caches
+.import_linter_cache/
+
+!.dockerignore
+!requirements.txt
+!src/
+!src/**
+!docker/
+!docker/Dockerfile

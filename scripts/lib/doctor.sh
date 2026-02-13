@@ -25,13 +25,14 @@ echo "[doctor] Python"
 
 echo
 echo "[doctor] CUDA (torch)"
-TORCH_CUDA="$("${VENV_DIR}/bin/python" - <<'PY'
+TORCH_CUDA="$(
+  "${VENV_DIR}/bin/python" - <<'PY'
 import torch
 print(torch.version.cuda or "")
 PY
 )"
 
-if [[ -z "${TORCH_CUDA}" ]]; then
+if [[ -z ${TORCH_CUDA} ]]; then
   echo "[doctor] ✗ torch.version.cuda is empty (CPU-only torch?)" >&2
   exit 3
 fi
@@ -68,7 +69,7 @@ for p in \
   "/usr/local/cuda/lib64/libnvrtc.so" \
   "/usr/lib/x86_64-linux-gnu/libnvrtc.so" \
   "/usr/local/cuda/targets/x86_64-linux/lib/libnvrtc.so"; do
-  if [[ -f "${p}" ]]; then
+  if [[ -f ${p} ]]; then
     echo "[doctor] ✓ libnvrtc.so present (${p})"
     exit 0
   fi
@@ -76,4 +77,3 @@ done
 
 echo "[doctor] ✗ libnvrtc.so not found" >&2
 exit 5
-

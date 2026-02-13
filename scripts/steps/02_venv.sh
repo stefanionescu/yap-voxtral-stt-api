@@ -25,4 +25,3 @@ if [[ ! -d ${VENV_DIR} ]]; then
   log_info "[venv] Creating venv at ${VENV_DIR}"
   "${py}" -m venv "${VENV_DIR}"
 fi
-

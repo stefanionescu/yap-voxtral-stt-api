@@ -139,6 +139,9 @@ run_shell() {
 
   SHELL_FILES=()
   while IFS= read -r -d '' file; do
+    if [[ ! -f $file ]]; then
+      continue
+    fi
     SHELL_FILES+=("$file")
   done <"$TMP_LIST"
 

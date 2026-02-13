@@ -25,4 +25,3 @@ else
   "${VENV_DIR}/bin/python" -m pip install -U pip
   "${VENV_DIR}/bin/python" -m pip install -r "${REQ_FILE}" --extra-index-url "${PYTORCH_CUDA_INDEX_URL}"
 fi
-

@@ -1,5 +1,6 @@
 """WebSocket handlers for the Voxtral STT server."""
 
-from .manager import handle_websocket_connection
+# Intentionally avoid re-exporting the main connection handler from this package
+# to keep imports lightweight for unit tests.
 
-__all__ = ["handle_websocket_connection"]
+__all__: list[str] = []

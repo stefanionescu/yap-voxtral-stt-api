@@ -4,7 +4,7 @@ Streaming speech-to-text (STT) server for **Mistral Voxtral Realtime** using **v
 
 - Default model: `mistralai/Voxtral-Mini-4B-Realtime-2602` (override with `VOXTRAL_MODEL_ID`)
 
-- FastAPI + WebSocket endpoint: `GET /ws`
+- FastAPI + WebSocket endpoint: `GET /api/asr-streaming`
 - JSON envelope: `{type, session_id, request_id, payload}`
 - vLLM Realtime semantics inside the envelope (`session.update`, `input_audio_buffer.*`, `transcription.*`)
 - API key auth, connection cap, idle timeout, hard max duration, rate limits
@@ -53,10 +53,12 @@ For running test clients (no GPU required):
 Set required environment variables:
 
 ```bash
-export VOXTRAL_API_KEY="secret_token"       # required for every /ws connection
+export VOXTRAL_API_KEY="secret_token"       # required for every websocket connection
 export MAX_CONCURRENT_CONNECTIONS=100       # optional (default: 100)
 export HF_TOKEN="hf_your_token"             # recommended for model downloads
 ```
+
+See `.env.example` for the full list of supported environment variables.
 
 Optional but recommended knobs:
 
@@ -78,7 +80,7 @@ Notes:
   and tails `server.log`.
 - Ctrl+C detaches from the log tail only. Stop the server with `bash scripts/stop.sh`.
 - Logs: `tail -f server.log`
-- Status: `bash scripts/status.sh`
+- Status: `bash scripts/lib/status.sh`
 - Bind/port: set `SERVER_BIND_HOST` / `SERVER_PORT` (defaults: `0.0.0.0:8000`)
 
 Start without tailing logs (recommended for background deployments):
@@ -98,7 +100,7 @@ curl -s http://localhost:8000/healthz
 Connect (query parameter auth):
 
 ```text
-ws://server:8000/ws?api_key=VOXTRAL_API_KEY
+ws://server:8000/api/asr-streaming?api_key=VOXTRAL_API_KEY
 ```
 
 All messages are JSON text frames with this envelope:
@@ -182,7 +184,7 @@ NUKE=1 bash scripts/stop.sh --nuke
 ## Linting
 
 ```bash
-bash scripts/activate.sh
+source scripts/lib/activate.sh
 pip install -r requirements-dev.txt
 bash scripts/lint.sh
 bash scripts/lint.sh --fix
@@ -198,8 +200,7 @@ git config core.hooksPath .githooks
 
 This repo ships Docker scaffolding but does not publish images.
 
-- `docker/vllm/Dockerfile`
-- `docker/vllm/README.md`
+- `docker/Dockerfile`
 - `docker/README.md`
 
 ## Advanced Guide

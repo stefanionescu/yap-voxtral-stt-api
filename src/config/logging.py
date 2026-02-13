@@ -1,14 +1,13 @@
-"""Logging configuration (constants only)."""
+"""Logging configuration (env-resolved constants only)."""
 
 from __future__ import annotations
 
-ENV_LOG_LEVEL = "LOG_LEVEL"
+import os
 
-DEFAULT_LOG_LEVEL = "INFO"
-DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+LOG_LEVEL: str = (os.getenv("LOG_LEVEL") or "INFO").strip().upper() or "INFO"
+LOG_FORMAT: str = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 __all__ = [
-    "DEFAULT_LOG_FORMAT",
-    "DEFAULT_LOG_LEVEL",
-    "ENV_LOG_LEVEL",
+    "LOG_FORMAT",
+    "LOG_LEVEL",
 ]

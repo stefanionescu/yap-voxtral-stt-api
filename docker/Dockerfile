@@ -1,7 +1,7 @@
 FROM nvidia/cuda:13.0.0-runtime-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG VLLM_WHEELS_INDEX_URL=https://wheels.vllm.ai/nightly
+ARG PYTORCH_CUDA_INDEX_URL=https://download.pytorch.org/whl/cu130
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 python3.11-venv python3-pip ca-certificates git ffmpeg \
@@ -11,13 +11,15 @@ WORKDIR /workspace
 
 COPY requirements.txt /workspace/requirements.txt
 
-# NOTE: Voxtral recommends vLLM from wheels.vllm.ai/nightly. We keep the Dockerfile
-# scaffolding minimal; tune torch/vLLM pins for your CUDA driver stack.
+# Install pinned runtime dependencies into the venv. CUDA 13 torch wheels are
+# provided via PYTORCH_CUDA_INDEX_URL.
 RUN python3.11 -m pip install -U pip \
     && python3.11 -m pip install "uv==0.8.3" \
     && python3.11 -m venv /workspace/.venv \
-    && uv pip install -U pip \
-    && uv pip install -r /workspace/requirements.txt --extra-index-url "${VLLM_WHEELS_INDEX_URL}" --torch-backend=auto
+    && uv pip install --python /workspace/.venv/bin/python -U pip \
+    && uv pip install --python /workspace/.venv/bin/python -r /workspace/requirements.txt \
+        --extra-index-url "${PYTORCH_CUDA_INDEX_URL}" \
+        --torch-backend=cu130
 
 COPY src /workspace/src
 

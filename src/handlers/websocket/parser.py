@@ -4,14 +4,18 @@ from __future__ import annotations
 
 from typing import Any
 
-import orjson
+try:
+    import orjson
+except ModuleNotFoundError:  # pragma: no cover
+    orjson = None
+    import json
 
 from src.config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
 
 
 def parse_client_message(raw: str) -> dict[str, Any]:
     try:
-        msg = orjson.loads(raw)
+        msg = orjson.loads(raw) if orjson is not None else json.loads(raw)
     except Exception as exc:
         raise ValueError(f"invalid JSON: {exc}") from exc
 

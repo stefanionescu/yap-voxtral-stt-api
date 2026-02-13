@@ -3,61 +3,59 @@
 from __future__ import annotations
 
 import logging
-import contextlib
 import multiprocessing
+from contextlib import suppress, asynccontextmanager
 
-with contextlib.suppress(RuntimeError):
+with suppress(RuntimeError):
     multiprocessing.set_start_method("spawn", force=True)
-
-from src.scripts.filters import configure as configure_log_filters  # noqa: E402
-
-configure_log_filters()
 
 from fastapi import FastAPI, WebSocket  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
 
 from src.runtime.logging import configure_logging  # noqa: E402
 from src.runtime.dependencies import build_runtime_deps  # noqa: E402
-from src.handlers.websocket import handle_websocket_connection  # noqa: E402
+from src.handlers.websocket.manager import handle_websocket_connection  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(default_response_class=ORJSONResponse)
-
 configure_logging()
 
+WS_ENDPOINT_PATH = "/api/asr-streaming"
 
-@app.on_event("startup")
-async def preload_engines() -> None:
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
     runtime_deps = await build_runtime_deps()
     app.state.runtime_deps = runtime_deps
     logger.info("runtime: ready")
+    try:
+        yield
+    finally:
+        deps = getattr(app.state, "runtime_deps", None)
+        if deps is not None:
+            await deps.shutdown()
 
 
-@app.on_event("shutdown")
-async def stop_engines() -> None:
-    runtime_deps = getattr(app.state, "runtime_deps", None)
-    if runtime_deps is not None:
-        await runtime_deps.shutdown()
+app = FastAPI(default_response_class=ORJSONResponse, lifespan=_lifespan)
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.get("/health")
-async def health():
+async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.get("/healthz")
-async def healthz():
+async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket(WS_ENDPOINT_PATH)
+async def websocket_endpoint(websocket: WebSocket) -> None:
     runtime_deps = getattr(app.state, "runtime_deps", None)
     if runtime_deps is None:
         raise RuntimeError("Runtime dependencies are not initialized")

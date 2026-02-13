@@ -1,6 +1,8 @@
-"""WebSocket protocol configuration (constants only)."""
+"""WebSocket configuration (protocol + env-resolved runtime values)."""
 
 from __future__ import annotations
+
+import os
 
 # Envelope keys (server protocol)
 WS_KEY_TYPE = "type"
@@ -18,20 +20,41 @@ WS_CLOSE_MAX_DURATION_CODE = 4003
 WS_CLOSE_IDLE_REASON = "idle timeout"
 WS_CLOSE_MAX_DURATION_REASON = "max connection duration reached"
 
-# Connection lifecycle (env-driven in runtime)
-ENV_WS_IDLE_TIMEOUT_S = "WS_IDLE_TIMEOUT_S"
-DEFAULT_WS_IDLE_TIMEOUT_S = 150.0
+# Connection lifecycle
+_WS_IDLE_TIMEOUT_S_RAW = (os.getenv("WS_IDLE_TIMEOUT_S") or "").strip()
+try:
+    WS_IDLE_TIMEOUT_S: float = float(_WS_IDLE_TIMEOUT_S_RAW) if _WS_IDLE_TIMEOUT_S_RAW else 150.0
+except Exception:
+    WS_IDLE_TIMEOUT_S = 150.0
+if WS_IDLE_TIMEOUT_S <= 0:
+    WS_IDLE_TIMEOUT_S = 150.0
 
-ENV_WS_WATCHDOG_TICK_S = "WS_WATCHDOG_TICK_S"
-DEFAULT_WS_WATCHDOG_TICK_S = 5.0
+_WS_WATCHDOG_TICK_S_RAW = (os.getenv("WS_WATCHDOG_TICK_S") or "").strip()
+try:
+    WS_WATCHDOG_TICK_S: float = float(_WS_WATCHDOG_TICK_S_RAW) if _WS_WATCHDOG_TICK_S_RAW else 5.0
+except Exception:
+    WS_WATCHDOG_TICK_S = 5.0
+if WS_WATCHDOG_TICK_S <= 0:
+    WS_WATCHDOG_TICK_S = 5.0
 
 # Hard max connection duration (default: 90 minutes).
-ENV_WS_MAX_CONNECTION_DURATION_S = "WS_MAX_CONNECTION_DURATION_S"
-DEFAULT_WS_MAX_CONNECTION_DURATION_S = float(90 * 60)
+_WS_MAX_CONNECTION_DURATION_S_RAW = (os.getenv("WS_MAX_CONNECTION_DURATION_S") or "").strip()
+try:
+    WS_MAX_CONNECTION_DURATION_S: float = (
+        float(_WS_MAX_CONNECTION_DURATION_S_RAW) if _WS_MAX_CONNECTION_DURATION_S_RAW else float(90 * 60)
+    )
+except Exception:
+    WS_MAX_CONNECTION_DURATION_S = float(90 * 60)
+if WS_MAX_CONNECTION_DURATION_S <= 0:
+    WS_MAX_CONNECTION_DURATION_S = float(90 * 60)
 
 # Inbound buffering (decouples receive from engine scheduling)
-ENV_WS_INBOUND_QUEUE_MAX = "WS_INBOUND_QUEUE_MAX"
-DEFAULT_WS_INBOUND_QUEUE_MAX = 256
+_WS_INBOUND_QUEUE_MAX_RAW = (os.getenv("WS_INBOUND_QUEUE_MAX") or "").strip()
+try:
+    WS_INBOUND_QUEUE_MAX: int = int(_WS_INBOUND_QUEUE_MAX_RAW) if _WS_INBOUND_QUEUE_MAX_RAW else 256
+except Exception:
+    WS_INBOUND_QUEUE_MAX = 256
+WS_INBOUND_QUEUE_MAX = max(1, int(WS_INBOUND_QUEUE_MAX))
 
 # Errors (payload.code values)
 WS_ERROR_AUTH_FAILED = "authentication_failed"
@@ -42,14 +65,6 @@ WS_ERROR_RATE_LIMITED = "rate_limited"
 WS_ERROR_INTERNAL = "internal_error"
 
 __all__ = [
-    "DEFAULT_WS_IDLE_TIMEOUT_S",
-    "DEFAULT_WS_INBOUND_QUEUE_MAX",
-    "DEFAULT_WS_MAX_CONNECTION_DURATION_S",
-    "DEFAULT_WS_WATCHDOG_TICK_S",
-    "ENV_WS_IDLE_TIMEOUT_S",
-    "ENV_WS_INBOUND_QUEUE_MAX",
-    "ENV_WS_MAX_CONNECTION_DURATION_S",
-    "ENV_WS_WATCHDOG_TICK_S",
     "WS_CLOSE_BUSY_CODE",
     "WS_CLOSE_CLIENT_REQUEST_CODE",
     "WS_CLOSE_IDLE_CODE",
@@ -57,6 +72,10 @@ __all__ = [
     "WS_CLOSE_MAX_DURATION_CODE",
     "WS_CLOSE_MAX_DURATION_REASON",
     "WS_CLOSE_UNAUTHORIZED_CODE",
+    "WS_IDLE_TIMEOUT_S",
+    "WS_INBOUND_QUEUE_MAX",
+    "WS_MAX_CONNECTION_DURATION_S",
+    "WS_WATCHDOG_TICK_S",
     "WS_ERROR_AUTH_FAILED",
     "WS_ERROR_INTERNAL",
     "WS_ERROR_INVALID_MESSAGE",

@@ -1,4 +1,4 @@
-"""WebSocket message loop for Voxtral Realtime (/ws)."""
+"""WebSocket message loop for Voxtral Realtime (/api/asr-streaming)."""
 
 from __future__ import annotations
 

@@ -1,9 +1,11 @@
-"""Secrets configuration (constants only)."""
+"""Secrets configuration (env-resolved constants only)."""
 
 from __future__ import annotations
 
-ENV_VOXTRAL_API_KEY = "VOXTRAL_API_KEY"
+import os
+
+VOXTRAL_API_KEY: str = (os.getenv("VOXTRAL_API_KEY") or "").strip()
 
 __all__ = [
-    "ENV_VOXTRAL_API_KEY",
+    "VOXTRAL_API_KEY",
 ]

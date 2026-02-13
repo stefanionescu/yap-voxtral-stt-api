@@ -6,17 +6,16 @@ import time
 import asyncio
 import logging
 import contextlib
-
-from fastapi import WebSocket
+from typing import Any
 
 from src.config.websocket import (
+    WS_IDLE_TIMEOUT_S,
     WS_CLOSE_IDLE_CODE,
+    WS_WATCHDOG_TICK_S,
     WS_CLOSE_IDLE_REASON,
-    DEFAULT_WS_IDLE_TIMEOUT_S,
-    DEFAULT_WS_WATCHDOG_TICK_S,
     WS_CLOSE_MAX_DURATION_CODE,
     WS_CLOSE_MAX_DURATION_REASON,
-    DEFAULT_WS_MAX_CONNECTION_DURATION_S,
+    WS_MAX_CONNECTION_DURATION_S,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,17 +24,17 @@ logger = logging.getLogger(__name__)
 class WebSocketLifecycle:
     def __init__(
         self,
-        websocket: WebSocket,
+        websocket: Any,
         *,
         idle_timeout_s: float | None = None,
         watchdog_tick_s: float | None = None,
         max_connection_duration_s: float | None = None,
     ) -> None:
         self._ws = websocket
-        self._idle_timeout_s = float(DEFAULT_WS_IDLE_TIMEOUT_S if idle_timeout_s is None else idle_timeout_s)
-        self._watchdog_tick_s = float(DEFAULT_WS_WATCHDOG_TICK_S if watchdog_tick_s is None else watchdog_tick_s)
+        self._idle_timeout_s = float(WS_IDLE_TIMEOUT_S if idle_timeout_s is None else idle_timeout_s)
+        self._watchdog_tick_s = float(WS_WATCHDOG_TICK_S if watchdog_tick_s is None else watchdog_tick_s)
         self._max_connection_duration_s = float(
-            DEFAULT_WS_MAX_CONNECTION_DURATION_S if max_connection_duration_s is None else max_connection_duration_s
+            WS_MAX_CONNECTION_DURATION_S if max_connection_duration_s is None else max_connection_duration_s
         )
         self._connection_start = time.monotonic()
         self._last_activity = time.monotonic()

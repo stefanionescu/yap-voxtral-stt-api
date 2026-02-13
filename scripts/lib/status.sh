@@ -30,4 +30,3 @@ if command -v curl >/dev/null 2>&1; then
 fi
 
 log_info "[status] logs: tail -n 200 ${ROOT_DIR}/server.log"
-

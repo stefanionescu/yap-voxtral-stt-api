@@ -15,4 +15,3 @@ require_env() {
 }
 
 require_env "VOXTRAL_API_KEY"
-

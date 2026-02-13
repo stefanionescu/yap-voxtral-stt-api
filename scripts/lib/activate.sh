@@ -28,4 +28,3 @@ source "${VENV_DIR}/bin/activate"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 
 echo "Activated venv: ${VENV_DIR}"
-
