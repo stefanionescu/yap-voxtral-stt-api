@@ -7,6 +7,8 @@ import json
 import logging
 from pathlib import Path
 
+from huggingface_hub import snapshot_download
+
 from src.state.settings import ModelSettings
 
 logger = logging.getLogger(__name__)
@@ -60,9 +62,6 @@ def ensure_voxtral_snapshot(model: ModelSettings) -> Path:
 
     if not _looks_like_snapshot(model_dir, tekken_filename=model.tekken_filename):
         token = (os.getenv("HF_TOKEN") or "").strip() or None
-
-        # Local snapshot avoids mutating the HF cache and lets us patch tekken.json safely.
-        from huggingface_hub import snapshot_download  # noqa: PLC0415
 
         logger.info("voxtral: downloading snapshot repo_id=%s -> %s", model.model_id, model_dir)
         snapshot_download(

@@ -9,8 +9,8 @@ from src.state.settings import AppSettings
 from src.realtime.bridge import RealtimeBridge
 from src.handlers.connections import ConnectionManager
 
+from .vllm import build_vllm_realtime
 from .settings_loader import load_settings
-from .vllm_engine import build_vllm_realtime
 
 logger = logging.getLogger(__name__)
 

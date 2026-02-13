@@ -27,6 +27,8 @@ class EnvelopeWebSocket:
         self._on_disconnect = on_disconnect
 
     async def send_text(self, text: str) -> None:
+        if self._state.touch is not None:
+            self._state.touch()
         try:
             event = orjson.loads(text)
         except Exception:
@@ -40,6 +42,13 @@ class EnvelopeWebSocket:
             return
 
         msg_type = event.get("type")
+        if (
+            isinstance(msg_type, str)
+            and msg_type in {"transcription.done", "error"}
+            and self._state.inflight_request_id == self._state.request_id
+        ):
+            self._state.inflight_request_id = None
+
         payload: dict[str, Any] = {}
         if isinstance(event, dict):
             payload = {k: v for k, v in event.items() if k != "type"}

@@ -16,9 +16,5 @@ WS_CLOSE_CODE_NORMAL: int = 1000
 # Maximum WebSocket message size (bytes)
 WS_MAX_MESSAGE_BYTES: int = 32 * 1024 * 1024
 
-# Application-level ping interval to keep connections alive while waiting for
-# long-running transcripts.
-WS_APP_PING_INTERVAL_S: float = 30.0
-
 # For display/debug output only.
 WS_CLOSE_REASON_CLIENT_DONE: str = "client_done"

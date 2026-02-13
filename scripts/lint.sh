@@ -122,6 +122,7 @@ run_python() {
   run_quiet "one-class-per-file" python "$ROOT_DIR/linting/one_class_per_file.py"
   run_quiet "no-runtime-singletons" python "$ROOT_DIR/linting/no_runtime_singletons.py"
   run_quiet "no-lazy-module-loading" python "$ROOT_DIR/linting/no_lazy_module_loading.py"
+  run_quiet "no-local-imports" python "$ROOT_DIR/linting/no_local_imports.py"
   run_quiet "no-legacy-markers" python "$ROOT_DIR/linting/no_legacy_markers.py"
   run_quiet "dockerignore-policy" python "$ROOT_DIR/linting/dockerignore_policy.py"
   run_quiet "single-file-folders" python "$ROOT_DIR/linting/single_file_folders.py"

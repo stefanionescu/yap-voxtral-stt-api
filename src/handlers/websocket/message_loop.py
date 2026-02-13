@@ -194,8 +194,9 @@ async def run_message_loop(
     message_limiter: SlidingWindowRateLimiter,
     cancel_limiter: SlidingWindowRateLimiter,
     runtime_deps: RuntimeDeps,
+    *,
+    state: EnvelopeState,
 ) -> str | None:
-    state = EnvelopeState()
     inbound_q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
         maxsize=max(1, int(runtime_deps.settings.websocket.inbound_queue_max))
     )

@@ -7,6 +7,7 @@ import contextlib
 from typing import Any
 
 from fastapi import WebSocket
+from vllm.entrypoints.openai.realtime.connection import RealtimeConnection
 
 from src.state import EnvelopeState
 
@@ -26,8 +27,6 @@ class RealtimeConnectionAdapter:
     ) -> None:
         self._state = state
         self._allowed_model_name = allowed_model_name
-
-        from vllm.entrypoints.openai.realtime.connection import RealtimeConnection  # noqa: PLC0415
 
         self._conn: RealtimeConnection | None = None
 

@@ -7,6 +7,13 @@ import logging
 import contextlib
 from typing import Any
 
+from vllm.usage.usage_lib import UsageContext
+from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.entrypoints.openai.models.protocol import BaseModelPath
+from vllm.entrypoints.openai.models.serving import OpenAIServingModels
+from vllm.entrypoints.openai.realtime.serving import OpenAIServingRealtime
+from vllm.entrypoints.openai.api_server import build_async_engine_client_from_engine_args
+
 from src.state.settings import AppSettings
 
 from .model import ensure_voxtral_snapshot
@@ -27,13 +34,6 @@ async def build_vllm_realtime(settings: AppSettings) -> tuple[Any, Any, Any, Any
     # Ensure a writable local snapshot exists and tekken.json delay is patched.
     settings.model.model_dir.mkdir(parents=True, exist_ok=True)
     model_dir = ensure_voxtral_snapshot(settings.model)
-
-    from vllm.usage.usage_lib import UsageContext  # noqa: PLC0415
-    from vllm.engine.arg_utils import AsyncEngineArgs  # noqa: PLC0415
-    from vllm.entrypoints.openai.models.protocol import BaseModelPath  # noqa: PLC0415
-    from vllm.entrypoints.openai.models.serving import OpenAIServingModels  # noqa: PLC0415
-    from vllm.entrypoints.openai.realtime.serving import OpenAIServingRealtime  # noqa: PLC0415
-    from vllm.entrypoints.openai.api_server import build_async_engine_client_from_engine_args  # noqa: PLC0415
 
     engine_args_kwargs: dict[str, Any] = {
         "model": str(model_dir),

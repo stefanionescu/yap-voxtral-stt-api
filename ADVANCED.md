@@ -84,7 +84,7 @@ bash scripts/lib/doctor.sh
 ## vLLM Configuration
 
 All vLLM knobs are env-driven and loaded at server startup (`src/runtime/settings_loader.py`),
-then passed into `AsyncEngineArgs` (`src/runtime/vllm_engine.py`).
+then passed into `AsyncEngineArgs` (`src/runtime/vllm.py`).
 
 Common knobs:
 

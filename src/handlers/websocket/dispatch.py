@@ -46,6 +46,7 @@ async def _handle_cancel(
     if conn is not None:
         await conn.cancel()
     state.active_request_id = None
+    state.inflight_request_id = None
     await safe_send_envelope(
         ws,
         msg_type="cancelled",
@@ -102,8 +103,12 @@ async def _handle_commit(
     if not final:
         conn = await _ensure_connection(conn, runtime_deps=runtime_deps, ws=ws, state=state, initialize=True)
         # New utterance (non-final commit) cancels any previous active request on this connection.
+        if state.inflight_request_id and state.inflight_request_id != request_id:
+            await conn.cancel()
+            state.inflight_request_id = None
         if state.active_request_id and state.active_request_id != request_id:
             await conn.cancel()
+            state.inflight_request_id = None
         state.active_request_id = request_id
     else:
         if state.active_request_id is None:
@@ -132,6 +137,8 @@ async def _handle_commit(
     if conn is None:
         raise RuntimeError("internal error: realtime connection is missing after commit validation")
 
+    if final:
+        state.inflight_request_id = request_id
     await conn.handle_event("input_audio_buffer.commit", {"final": final})
     if final:
         state.active_request_id = None

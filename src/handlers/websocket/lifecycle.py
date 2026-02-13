@@ -7,6 +7,7 @@ import asyncio
 import logging
 import contextlib
 from typing import Any
+from collections.abc import Callable
 
 from src.config.websocket import (
     WS_IDLE_TIMEOUT_S,
@@ -26,11 +27,13 @@ class WebSocketLifecycle:
         self,
         websocket: Any,
         *,
+        is_busy_fn: Callable[[], bool] | None = None,
         idle_timeout_s: float | None = None,
         watchdog_tick_s: float | None = None,
         max_connection_duration_s: float | None = None,
     ) -> None:
         self._ws = websocket
+        self._is_busy_fn = is_busy_fn or (lambda: False)
         self._idle_timeout_s = float(WS_IDLE_TIMEOUT_S if idle_timeout_s is None else idle_timeout_s)
         self._watchdog_tick_s = float(WS_WATCHDOG_TICK_S if watchdog_tick_s is None else watchdog_tick_s)
         self._max_connection_duration_s = float(
@@ -76,6 +79,8 @@ class WebSocketLifecycle:
                             reason=WS_CLOSE_MAX_DURATION_REASON,
                         )
                     break
+                if self._is_busy_fn():
+                    continue
                 if (time.monotonic() - self._last_activity) >= self._idle_timeout_s:
                     logger.info("WebSocket idle timeout reached; closing connection")
                     self._stop_event.set()
