@@ -41,15 +41,13 @@ async def build_vllm_realtime() -> tuple[Any, Any, Any, Any]:
 
     from vllm.usage.usage_lib import UsageContext  # noqa: PLC0415
     from vllm.engine.arg_utils import AsyncEngineArgs  # noqa: PLC0415
+    from vllm.entrypoints.openai.models.protocol import BaseModelPath  # noqa: PLC0415
+    from vllm.entrypoints.openai.models.serving import OpenAIServingModels  # noqa: PLC0415
     from vllm.entrypoints.openai.realtime.serving import (  # noqa: PLC0415
         OpenAIServingRealtime,
     )
     from vllm.entrypoints.openai.api_server import (  # noqa: PLC0415
         build_async_engine_client_from_engine_args,
-    )
-    from vllm.entrypoints.openai.serving_models import (  # noqa: PLC0415
-        BaseModelPath,
-        OpenAIServingModels,
     )
 
     engine_args_kwargs: dict[str, Any] = {
