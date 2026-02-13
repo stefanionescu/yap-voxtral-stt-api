@@ -19,4 +19,4 @@ soundfile==0.13.1
 soxr==0.5.0.post1
 
 # vLLM (installed from wheels.vllm.ai/nightly on GPU machines)
-vllm==0.16.0rc2.dev160+gb86bf4417
+vllm==0.16.0rc2.dev179+g071d863e2
