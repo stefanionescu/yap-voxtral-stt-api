@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from params import config
+import config
 
 
 def _compute_wall_to_final(handler, t0: float, last_signal_ts: float) -> float:

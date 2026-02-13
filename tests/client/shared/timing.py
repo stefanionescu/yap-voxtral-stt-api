@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import asyncio
 
-from params import config
+import config
 
 
 def reset_timing_metrics(base) -> None:

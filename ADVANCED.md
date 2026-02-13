@@ -12,6 +12,7 @@ See the main [README](README.md) for quickstart and basic usage.
 - [Voxtral Realtime Latency: `transcription_delay_ms`](#voxtral-realtime-latency-transcription_delay_ms)
 - [vLLM Installation Notes](#vllm-installation-notes)
 - [vLLM Configuration](#vllm-configuration)
+- [Scripts and Lifecycle](#scripts-and-lifecycle)
 - [API — WebSocket `/ws`](#api--websocket-ws)
 - [Streaming Audio Details](#streaming-audio-details)
 - [Connection Management](#connection-management)
@@ -60,22 +61,29 @@ Notes:
 
 ## vLLM Installation Notes
 
-This repo pins `vllm==...` in `requirements.txt` but expects GPU hosts to install using vLLM’s
-nightly wheel index. `scripts/main.sh` does this automatically when `uv` is available:
+This repo installs a pinned CUDA 13 stack via `scripts/main.sh`:
 
 ```bash
-VLLM_WHEELS_INDEX_URL=https://wheels.vllm.ai/nightly/cu130 bash scripts/main.sh
+bash scripts/main.sh
 ```
 
 Key points:
-- The launcher prefers `uv pip` and installs cu130 wheels (`--torch-backend=cu130`).
-- If `uv` is not installed, the script falls back to `pip`. In that case you may need to install a
-  compatible CUDA `torch` wheel manually.
+- Dependencies are pinned in `requirements.txt`.
+- The launcher prefers `uv pip` and installs CUDA 13-compatible wheels (`--torch-backend=cu130`).
+- The PyTorch CUDA wheel index used by the launcher is `https://download.pytorch.org/whl/cu130` (`PYTORCH_CUDA_INDEX_URL`).
+
+Validation:
+
+```bash
+bash scripts/doctor.sh
+```
+
+`scripts/doctor.sh` fails unless `torch.version.cuda` is `13.x`.
 
 ## vLLM Configuration
 
-All vLLM knobs are env-driven (`src/config/vllm.py`) and then passed into `AsyncEngineArgs`
-(`src/runtime/vllm_engine.py`).
+All vLLM knobs are env-driven and loaded at server startup (`src/runtime/settings_loader.py`),
+then passed into `AsyncEngineArgs` (`src/runtime/vllm_engine.py`).
 
 Common knobs:
 
@@ -95,6 +103,29 @@ Voxtral streaming timing:
 - Voxtral Realtime operates on an ~80ms step (12.5Hz). Approximate:
   - `max_seconds ~= VLLM_MAX_MODEL_LEN * 0.08`
   - `VLLM_MAX_MODEL_LEN ~= max_seconds / 0.08`
+
+## Scripts and Lifecycle
+
+This repo uses shell scripts to keep deployments repeatable.
+
+- `scripts/main.sh` runs `scripts/steps/*` in order:
+  - `01_require_env.sh` (validates required env vars)
+  - `02_venv.sh` (creates `.venv/` if missing)
+  - `03_install_deps.sh` (installs pinned deps; CUDA 13 torch backend)
+  - `04_start_server.sh` (starts uvicorn; writes `server.pid`)
+  - `05_wait_health.sh` (polls `/healthz`)
+  - `06_tail_logs.sh` (tails `server.log` unless `TAIL_LOGS=0`)
+
+Stop modes:
+
+```bash
+bash scripts/stop.sh
+NUKE=1 bash scripts/stop.sh --nuke
+```
+
+The nuke mode is guarded by `NUKE=1` and removes:
+- repo runtime state (`.venv/`, `models/`, logs)
+- common caches under `~/.cache/` (HF/torch/vLLM/triton/uv/pip)
 
 ## API — WebSocket `/ws`
 
@@ -308,8 +339,8 @@ VOXTRAL_API_KEY=secret_token python tests/remote.py --server localhost:8000
 ### vLLM Install Fails
 
 - Confirm you are using `uv` on a GPU host.
-- Ensure `VLLM_WHEELS_INDEX_URL` points to the cu130 wheel index (`https://wheels.vllm.ai/nightly/cu130`).
-- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/main.sh`).
+- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/steps/03_install_deps.sh`).
+- Run `bash scripts/doctor.sh` to confirm `torch.version.cuda` is `13.x`.
 
 ### Model Download Is Slow or Fails
 
@@ -327,3 +358,13 @@ VOXTRAL_API_KEY=secret_token python tests/remote.py --server localhost:8000
 - For 80ms chunks, use a value >= 800 per minute (plus headroom).
 - For 20ms chunks, use a value >= 3200 per minute.
 - For 10ms chunks, use a value >= 6500 per minute.
+
+### Inbound Queue Full
+
+If the server closes with an `error` reason code `inbound_queue_full`, the per-connection inbound
+queue was saturated (`WS_INBOUND_QUEUE_MAX`).
+
+Typical fixes:
+- Use 80ms chunks (default client chunk size) instead of very small chunks.
+- Reduce per-connection message rate (e.g. pack multiple frames per message if your client supports it).
+- Increase `WS_INBOUND_QUEUE_MAX` conservatively (too high can increase memory use and tail latency).

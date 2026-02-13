@@ -9,7 +9,7 @@ import argparse
 
 from client import ConvoClient
 from data.printing import dim, section_header
-from params.env import apply_key_overrides, derive_default_server
+from utils.env import apply_key_overrides, derive_default_server
 from utils import (
     SAMPLES_DIR,
     find_sample_files,

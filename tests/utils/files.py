@@ -19,7 +19,7 @@ try:
 except Exception:  # pragma: no cover
     soxr = None
 
-from params import config
+import config
 
 SAMPLES_DIR = Path(config.SAMPLES_DIR_NAME)
 EXTS = config.FILE_EXTS

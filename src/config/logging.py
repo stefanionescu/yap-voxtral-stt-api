@@ -1,17 +1,14 @@
-"""Logging configuration."""
+"""Logging configuration (constants only)."""
 
 from __future__ import annotations
 
-import os
-import logging
+ENV_LOG_LEVEL = "LOG_LEVEL"
 
+DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
-def configure_logging() -> None:
-    level = (os.getenv("LOG_LEVEL") or "INFO").strip().upper()
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
-
-
-__all__ = ["configure_logging"]
+__all__ = [
+    "DEFAULT_LOG_FORMAT",
+    "DEFAULT_LOG_LEVEL",
+    "ENV_LOG_LEVEL",
+]

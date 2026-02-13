@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import uuid
 
-from params import config
+import config
 from utils.messages import MessageHandler
 from client.shared.base import WSClientBase
 from data.metrics import calculate_basic_metrics, calculate_detailed_metrics, compute_stream_timeout_seconds

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
+import orjson
 from fastapi import WebSocket, WebSocketDisconnect
 
 from src.config.websocket import WS_KEY_TYPE, WS_KEY_PAYLOAD, WS_KEY_REQUEST_ID, WS_KEY_SESSION_ID
@@ -61,7 +61,8 @@ async def safe_send_envelope(
     request_id: str,
     payload: dict[str, Any] | None = None,
 ) -> bool:
-    return await safe_send_text(ws, json.dumps(build_envelope(msg_type, session_id, request_id, payload)))
+    data = build_envelope(msg_type, session_id, request_id, payload)
+    return await safe_send_text(ws, orjson.dumps(data).decode("utf-8"))
 
 
 async def send_error(

@@ -1,44 +1,33 @@
-"""Connection and rate-limit configuration."""
+"""Admission control and rate limit configuration (constants only)."""
 
 from __future__ import annotations
 
-import os
+ENV_MAX_CONCURRENT_CONNECTIONS = "MAX_CONCURRENT_CONNECTIONS"
+DEFAULT_MAX_CONCURRENT_CONNECTIONS = 100
 
+ENV_WS_MESSAGE_WINDOW_SECONDS = "WS_MESSAGE_WINDOW_SECONDS"
+DEFAULT_WS_MESSAGE_WINDOW_SECONDS = 60.0
 
-def _int_env(name: str, default: int) -> int:
-    raw = os.getenv(name)
-    if raw is None or not raw.strip():
-        return default
-    try:
-        return int(raw)
-    except Exception:
-        return default
-
-
-def _float_env(name: str, default: float) -> float:
-    raw = os.getenv(name)
-    if raw is None or not raw.strip():
-        return default
-    try:
-        return float(raw)
-    except Exception:
-        return default
-
-
-MAX_CONCURRENT_CONNECTIONS = _int_env("MAX_CONCURRENT_CONNECTIONS", 100)
-
-WS_MESSAGE_WINDOW_SECONDS = _float_env("WS_MESSAGE_WINDOW_SECONDS", 60.0)
 # STT streaming is message-heavy. With 80ms chunks, clients send ~750 append messages/minute.
 # Default high enough to support 20ms chunking (~3000/min) with headroom.
-WS_MAX_MESSAGES_PER_WINDOW = _int_env("WS_MAX_MESSAGES_PER_WINDOW", 5000)
+ENV_WS_MAX_MESSAGES_PER_WINDOW = "WS_MAX_MESSAGES_PER_WINDOW"
+DEFAULT_WS_MAX_MESSAGES_PER_WINDOW = 5000
 
-WS_CANCEL_WINDOW_SECONDS = _float_env("WS_CANCEL_WINDOW_SECONDS", WS_MESSAGE_WINDOW_SECONDS)
-WS_MAX_CANCELS_PER_WINDOW = _int_env("WS_MAX_CANCELS_PER_WINDOW", 50)
+ENV_WS_CANCEL_WINDOW_SECONDS = "WS_CANCEL_WINDOW_SECONDS"
+DEFAULT_WS_CANCEL_WINDOW_SECONDS = DEFAULT_WS_MESSAGE_WINDOW_SECONDS
+
+ENV_WS_MAX_CANCELS_PER_WINDOW = "WS_MAX_CANCELS_PER_WINDOW"
+DEFAULT_WS_MAX_CANCELS_PER_WINDOW = 50
 
 __all__ = [
-    "MAX_CONCURRENT_CONNECTIONS",
-    "WS_MESSAGE_WINDOW_SECONDS",
-    "WS_MAX_MESSAGES_PER_WINDOW",
-    "WS_CANCEL_WINDOW_SECONDS",
-    "WS_MAX_CANCELS_PER_WINDOW",
+    "DEFAULT_MAX_CONCURRENT_CONNECTIONS",
+    "DEFAULT_WS_CANCEL_WINDOW_SECONDS",
+    "DEFAULT_WS_MAX_CANCELS_PER_WINDOW",
+    "DEFAULT_WS_MAX_MESSAGES_PER_WINDOW",
+    "DEFAULT_WS_MESSAGE_WINDOW_SECONDS",
+    "ENV_MAX_CONCURRENT_CONNECTIONS",
+    "ENV_WS_CANCEL_WINDOW_SECONDS",
+    "ENV_WS_MAX_CANCELS_PER_WINDOW",
+    "ENV_WS_MAX_MESSAGES_PER_WINDOW",
+    "ENV_WS_MESSAGE_WINDOW_SECONDS",
 ]

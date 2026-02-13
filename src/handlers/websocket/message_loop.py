@@ -1,4 +1,4 @@
-"""WebSocket message loop and dispatch for Voxtral Realtime (/ws)."""
+"""WebSocket message loop for Voxtral Realtime (/ws)."""
 
 from __future__ import annotations
 
@@ -6,21 +6,20 @@ import asyncio
 import logging
 import contextlib
 from typing import Any, Literal
-from collections.abc import Callable, Awaitable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
 from src.runtime.dependencies import RuntimeDeps
-from src.config.models import VOXTRAL_SERVED_MODEL_NAME
 from src.handlers.limits import SlidingWindowRateLimiter
 from src.realtime import EnvelopeState, RealtimeConnectionAdapter
 from src.config.websocket import (
-    WS_WATCHDOG_TICK_S,
+    WS_ERROR_INTERNAL,
+    WS_CLOSE_BUSY_CODE,
     WS_ERROR_INVALID_MESSAGE,
-    WS_ERROR_INVALID_PAYLOAD,
     WS_CLOSE_CLIENT_REQUEST_CODE,
 )
 
+from .dispatch import HANDLERS
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
 from .errors import send_error, safe_send_envelope
@@ -28,17 +27,17 @@ from .limits import consume_limiter, select_rate_limiter
 
 logger = logging.getLogger(__name__)
 
-HandlerFn = Callable[
-    [WebSocket, RuntimeDeps, EnvelopeState, RealtimeConnectionAdapter | None, str, str, dict[str, Any]],
-    Awaitable[RealtimeConnectionAdapter | None],
-]
 
-
-async def _recv_text_with_watchdog(ws: WebSocket, lifecycle: WebSocketLifecycle) -> tuple[str | None, bool]:
+async def _recv_text_with_watchdog(
+    ws: WebSocket,
+    lifecycle: WebSocketLifecycle,
+    *,
+    watchdog_tick_s: float,
+) -> tuple[str | None, bool]:
     try:
         message = await asyncio.wait_for(
             ws.receive_text(),
-            timeout=WS_WATCHDOG_TICK_S * 2,
+            timeout=max(1.0, float(watchdog_tick_s) * 2.0),
         )
         return message, False
     except TimeoutError:
@@ -80,167 +79,113 @@ async def _parse_or_send_error(ws: WebSocket, raw: str, state: EnvelopeState) ->
         return None
 
 
-async def _ensure_connection(
-    conn: RealtimeConnectionAdapter | None,
+async def _inbound_processor_loop(
+    ws: WebSocket,
+    runtime_deps: RuntimeDeps,
+    state: EnvelopeState,
+    inbound_q: asyncio.Queue[dict[str, Any]],
+    conn_box: dict[str, RealtimeConnectionAdapter | None],
+) -> None:
+    while True:
+        msg = await inbound_q.get()
+        msg_type = msg["type"]
+        session_id = msg["session_id"]
+        request_id = msg["request_id"]
+        payload = msg["payload"] or {}
+
+        state.session_id = session_id
+        state.request_id = request_id
+
+        handler = HANDLERS.get(msg_type)
+        if handler is not None:
+            conn_box["conn"] = await handler(
+                ws,
+                runtime_deps,
+                state,
+                conn_box["conn"],
+                session_id,
+                request_id,
+                payload,
+            )
+            continue
+
+        await send_error(
+            ws,
+            session_id=session_id,
+            request_id=request_id,
+            error_code=WS_ERROR_INVALID_MESSAGE,
+            message=f"message type '{msg_type}' is not supported",
+            reason_code="unknown_message_type",
+        )
+
+
+async def _receive_and_enqueue(
+    ws: WebSocket,
+    lifecycle: WebSocketLifecycle,
+    message_limiter: SlidingWindowRateLimiter,
+    cancel_limiter: SlidingWindowRateLimiter,
+    runtime_deps: RuntimeDeps,
     *,
-    runtime_deps: RuntimeDeps,
-    ws: WebSocket,
     state: EnvelopeState,
-    initialize: bool,
-) -> RealtimeConnectionAdapter:
-    if conn is None:
-        conn = runtime_deps.realtime_bridge.new_connection(ws, state)
-    if initialize:
-        await conn.ensure_initialized()
-    return conn
-
-
-async def _handle_cancel(
-    ws: WebSocket,
-    _runtime_deps: RuntimeDeps,
-    state: EnvelopeState,
-    conn: RealtimeConnectionAdapter | None,
-    session_id: str,
-    request_id: str,
-    payload: dict[str, Any],
-) -> RealtimeConnectionAdapter | None:
-    if conn is not None:
-        await conn.cancel()
-    state.active_request_id = None
-    await safe_send_envelope(
-        ws,
-        msg_type="cancelled",
-        session_id=session_id,
-        request_id=request_id,
-        payload={"reason": (payload.get("reason") or "client_request")},
-    )
-    return conn
-
-
-async def _handle_session_update(
-    ws: WebSocket,
-    runtime_deps: RuntimeDeps,
-    state: EnvelopeState,
-    conn: RealtimeConnectionAdapter | None,
-    session_id: str,
-    request_id: str,
-    payload: dict[str, Any],
-) -> RealtimeConnectionAdapter | None:
-    desired = (
-        (payload.get("model") or VOXTRAL_SERVED_MODEL_NAME).strip()
-        if isinstance(payload.get("model"), str)
-        else VOXTRAL_SERVED_MODEL_NAME
-    )
-    if desired != VOXTRAL_SERVED_MODEL_NAME:
-        await send_error(
+    inbound_q: asyncio.Queue[dict[str, Any]],
+) -> str | None:
+    while True:
+        raw, should_exit = await _recv_text_with_watchdog(
             ws,
-            session_id=session_id,
-            request_id=request_id,
-            error_code=WS_ERROR_INVALID_PAYLOAD,
-            message="unsupported model",
-            reason_code="unsupported_model",
-            details={"allowed_model": VOXTRAL_SERVED_MODEL_NAME, "requested": desired},
+            lifecycle,
+            watchdog_tick_s=runtime_deps.settings.websocket.watchdog_tick_s,
         )
-        return conn
+        if should_exit:
+            return state.session_id if state.session_id != "unknown" else None
+        if raw is None:
+            continue
 
-    conn = await _ensure_connection(conn, runtime_deps=runtime_deps, ws=ws, state=state, initialize=False)
-    await conn.handle_event("session.update", {"model": VOXTRAL_SERVED_MODEL_NAME})
-    return conn
+        lifecycle.touch()
 
+        msg = await _parse_or_send_error(ws, raw, state)
+        if msg is None:
+            continue
 
-async def _handle_commit(
-    ws: WebSocket,
-    runtime_deps: RuntimeDeps,
-    state: EnvelopeState,
-    conn: RealtimeConnectionAdapter | None,
-    session_id: str,
-    request_id: str,
-    payload: dict[str, Any],
-) -> RealtimeConnectionAdapter | None:
-    final = bool(payload.get("final", False))
+        msg_type = msg["type"]
+        session_id = msg["session_id"]
+        request_id = msg["request_id"]
 
-    if not final:
-        conn = await _ensure_connection(conn, runtime_deps=runtime_deps, ws=ws, state=state, initialize=True)
-        # New utterance (non-final commit) cancels any previous active request on this connection.
-        if state.active_request_id and state.active_request_id != request_id:
-            await conn.cancel()
-        state.active_request_id = request_id
-    else:
-        if state.active_request_id is None:
+        state.session_id = session_id
+        state.request_id = request_id
+
+        limiter, label = select_rate_limiter(msg_type, message_limiter, cancel_limiter)
+        if limiter is not None:
+            ok = await consume_limiter(
+                ws,
+                limiter,
+                label,
+                session_id=session_id,
+                request_id=request_id,
+            )
+            if not ok:
+                continue
+
+        control = await _handle_control_message(ws, msg_type, session_id=session_id, request_id=request_id)
+        if control == "close":
+            return session_id
+        if control == "continue":
+            continue
+
+        try:
+            inbound_q.put_nowait(msg)
+        except asyncio.QueueFull:
             await send_error(
                 ws,
                 session_id=session_id,
                 request_id=request_id,
-                error_code=WS_ERROR_INVALID_PAYLOAD,
-                message="no active request; send input_audio_buffer.commit with final=false first",
-                reason_code="no_active_request",
+                error_code=WS_ERROR_INTERNAL,
+                message="server overloaded (inbound queue full)",
+                reason_code="inbound_queue_full",
+                details={"inbound_queue_max": inbound_q.maxsize},
             )
-            return conn
-        if state.active_request_id != request_id:
-            await send_error(
-                ws,
-                session_id=session_id,
-                request_id=request_id,
-                error_code=WS_ERROR_INVALID_PAYLOAD,
-                message="request_id does not match active request",
-                reason_code="request_id_mismatch",
-                details={"active_request_id": state.active_request_id},
-            )
-            return conn
-        conn = await _ensure_connection(conn, runtime_deps=runtime_deps, ws=ws, state=state, initialize=True)
-
-    if conn is None:
-        raise RuntimeError("internal error: realtime connection is missing after commit validation")
-
-    await conn.handle_event("input_audio_buffer.commit", {"final": final})
-    if final:
-        state.active_request_id = None
-    return conn
-
-
-async def _handle_append(
-    ws: WebSocket,
-    runtime_deps: RuntimeDeps,
-    state: EnvelopeState,
-    conn: RealtimeConnectionAdapter | None,
-    session_id: str,
-    request_id: str,
-    payload: dict[str, Any],
-) -> RealtimeConnectionAdapter | None:
-    audio = payload.get("audio")
-    if not isinstance(audio, str) or not audio.strip():
-        await send_error(
-            ws,
-            session_id=session_id,
-            request_id=request_id,
-            error_code=WS_ERROR_INVALID_PAYLOAD,
-            message="payload.audio (base64 pcm16) is required",
-            reason_code="missing_audio",
-        )
-        return conn
-
-    if state.active_request_id is None or state.active_request_id != request_id:
-        await send_error(
-            ws,
-            session_id=session_id,
-            request_id=request_id,
-            error_code=WS_ERROR_INVALID_PAYLOAD,
-            message="no active request; send input_audio_buffer.commit final=false first",
-            reason_code="no_active_request",
-        )
-        return conn
-
-    conn = await _ensure_connection(conn, runtime_deps=runtime_deps, ws=ws, state=state, initialize=True)
-    await conn.handle_event("input_audio_buffer.append", {"audio": audio})
-    return conn
-
-
-HANDLERS: dict[str, HandlerFn] = {
-    "cancel": _handle_cancel,
-    "session.update": _handle_session_update,
-    "input_audio_buffer.commit": _handle_commit,
-    "input_audio_buffer.append": _handle_append,
-}
+            with contextlib.suppress(Exception):
+                await ws.close(code=WS_CLOSE_BUSY_CODE)
+            return session_id
 
 
 async def run_message_loop(
@@ -251,67 +196,34 @@ async def run_message_loop(
     runtime_deps: RuntimeDeps,
 ) -> str | None:
     state = EnvelopeState()
-    conn: RealtimeConnectionAdapter | None = None
+    inbound_q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
+        maxsize=max(1, int(runtime_deps.settings.websocket.inbound_queue_max))
+    )
+    conn_box: dict[str, RealtimeConnectionAdapter | None] = {"conn": None}
 
+    processor_task: asyncio.Task | None = None
     try:
-        while True:
-            raw, should_exit = await _recv_text_with_watchdog(ws, lifecycle)
-            if should_exit:
-                return state.session_id if state.session_id != "unknown" else None
-            if raw is None:
-                continue
-
-            lifecycle.touch()
-
-            msg = await _parse_or_send_error(ws, raw, state)
-            if msg is None:
-                continue
-
-            msg_type = msg["type"]
-            session_id = msg["session_id"]
-            request_id = msg["request_id"]
-            payload = msg["payload"] or {}
-
-            state.session_id = session_id
-            state.request_id = request_id
-
-            limiter, label = select_rate_limiter(msg_type, message_limiter, cancel_limiter)
-            if limiter is not None:
-                ok = await consume_limiter(
-                    ws,
-                    limiter,
-                    label,
-                    session_id=session_id,
-                    request_id=request_id,
-                )
-                if not ok:
-                    continue
-
-            control = await _handle_control_message(ws, msg_type, session_id=session_id, request_id=request_id)
-            if control == "close":
-                return session_id
-            if control == "continue":
-                continue
-
-            handler = HANDLERS.get(msg_type)
-            if handler is not None:
-                conn = await handler(ws, runtime_deps, state, conn, session_id, request_id, payload)
-                continue
-
-            await send_error(
-                ws,
-                session_id=session_id,
-                request_id=request_id,
-                error_code=WS_ERROR_INVALID_MESSAGE,
-                message=f"message type '{msg_type}' is not supported",
-                reason_code="unknown_message_type",
-            )
+        processor_task = asyncio.create_task(_inbound_processor_loop(ws, runtime_deps, state, inbound_q, conn_box))
+        return await _receive_and_enqueue(
+            ws,
+            lifecycle,
+            message_limiter,
+            cancel_limiter,
+            runtime_deps,
+            state=state,
+            inbound_q=inbound_q,
+        )
     except WebSocketDisconnect:
         return state.session_id if state.session_id != "unknown" else None
     finally:
-        if conn is not None:
+        if processor_task is not None:
+            with contextlib.suppress(BaseException):
+                processor_task.cancel()
+            with contextlib.suppress(BaseException):
+                await processor_task
+        if conn_box["conn"] is not None:
             with contextlib.suppress(Exception):
-                await conn.cancel()
+                await conn_box["conn"].cancel()
 
 
 __all__ = ["run_message_loop"]

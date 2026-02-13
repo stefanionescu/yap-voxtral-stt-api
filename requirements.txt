@@ -1,8 +1,11 @@
 # Runtime + inference dependencies for the Voxtral STT server.
 #
-# NOTE: Voxtral Realtime currently recommends installing vLLM from the nightly
-# wheel index in GPU environments. See README/ADVANCED and scripts/main.sh for
-# the exact install command.
+# NOTE: GPU environments use CUDA 13 (cu130). See README/ADVANCED and scripts/main.sh
+# for the exact install command.
+
+torch==2.9.1
+torchvision==0.24.1
+torchaudio==2.9.1
 
 fastapi==0.129.0
 starlette==0.52.1
@@ -18,5 +21,8 @@ librosa==0.10.2.post1
 soundfile==0.13.1
 soxr==0.5.0.post1
 
-# vLLM (installed from wheels.vllm.ai/nightly on GPU machines)
-vllm==0.16.0rc2.dev179+g071d863e2
+# Model loader deps (required by Voxtral in vLLM)
+mistral-common[audio]==1.9.1
+
+# vLLM (CUDA 13 wheel pinned via GitHub release asset)
+vllm @ https://github.com/vllm-project/vllm/releases/download/v0.15.1/vllm-0.15.1+cu130-cp38-abi3-manylinux_2_35_x86_64.whl

@@ -1,1 +1,1 @@
-"""Custom structural lint checks for the Orpheus TTS API."""
+"""Custom structural lint checks for the Voxtral STT API."""

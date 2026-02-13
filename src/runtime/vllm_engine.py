@@ -7,21 +7,7 @@ import logging
 import contextlib
 from typing import Any
 
-from src.config.models import VOXTRAL_MODEL_DIR, VOXTRAL_SERVED_MODEL_NAME
-from src.config.vllm import (
-    VLLM_DTYPE,
-    VLLM_LOAD_FORMAT,
-    VLLM_MAX_NUM_SEQS,
-    VLLM_CONFIG_FORMAT,
-    VLLM_ENFORCE_EAGER,
-    VLLM_MAX_MODEL_LEN,
-    VLLM_KV_CACHE_DTYPE,
-    VLLM_TOKENIZER_MODE,
-    VLLM_COMPILATION_CONFIG,
-    VLLM_DISABLE_COMPILE_CACHE,
-    VLLM_GPU_MEMORY_UTILIZATION,
-    VLLM_MAX_NUM_BATCHED_TOKENS,
-)
+from src.state.settings import AppSettings
 
 from .model import ensure_voxtral_snapshot
 
@@ -35,12 +21,12 @@ def _filter_kwargs(cls: type[Any], kwargs: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in kwargs.items() if k in accepted and v is not None}
 
 
-async def build_vllm_realtime() -> tuple[Any, Any, Any, Any]:
+async def build_vllm_realtime(settings: AppSettings) -> tuple[Any, Any, Any, Any]:
     """Create (engine_stack, engine_client, serving_models, serving_realtime)."""
 
     # Ensure a writable local snapshot exists and tekken.json delay is patched.
-    VOXTRAL_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    model_dir = ensure_voxtral_snapshot()
+    settings.model.model_dir.mkdir(parents=True, exist_ok=True)
+    model_dir = ensure_voxtral_snapshot(settings.model)
 
     from vllm.usage.usage_lib import UsageContext  # noqa: PLC0415
     from vllm.engine.arg_utils import AsyncEngineArgs  # noqa: PLC0415
@@ -51,19 +37,19 @@ async def build_vllm_realtime() -> tuple[Any, Any, Any, Any]:
 
     engine_args_kwargs: dict[str, Any] = {
         "model": str(model_dir),
-        "dtype": VLLM_DTYPE,
-        "gpu_memory_utilization": VLLM_GPU_MEMORY_UTILIZATION,
-        "max_model_len": VLLM_MAX_MODEL_LEN,
-        "max_num_seqs": VLLM_MAX_NUM_SEQS,
-        "max_num_batched_tokens": VLLM_MAX_NUM_BATCHED_TOKENS,
-        "enforce_eager": VLLM_ENFORCE_EAGER,
-        "kv_cache_dtype": VLLM_KV_CACHE_DTYPE,
-        "tokenizer_mode": VLLM_TOKENIZER_MODE,
-        "config_format": VLLM_CONFIG_FORMAT,
-        "load_format": VLLM_LOAD_FORMAT,
-        "disable_compile_cache": VLLM_DISABLE_COMPILE_CACHE,
-        "compilation_config": VLLM_COMPILATION_CONFIG,
-        "served_model_name": VOXTRAL_SERVED_MODEL_NAME,
+        "dtype": settings.vllm.dtype,
+        "gpu_memory_utilization": settings.vllm.gpu_memory_utilization,
+        "max_model_len": settings.vllm.max_model_len,
+        "max_num_seqs": settings.vllm.max_num_seqs,
+        "max_num_batched_tokens": settings.vllm.max_num_batched_tokens,
+        "enforce_eager": settings.vllm.enforce_eager,
+        "kv_cache_dtype": settings.vllm.kv_cache_dtype,
+        "tokenizer_mode": settings.vllm.tokenizer_mode,
+        "config_format": settings.vllm.config_format,
+        "load_format": settings.vllm.load_format,
+        "disable_compile_cache": settings.vllm.disable_compile_cache,
+        "compilation_config": settings.vllm.compilation_config,
+        "served_model_name": settings.model.served_model_name,
         "trust_remote_code": False,
     }
 
@@ -79,7 +65,7 @@ async def build_vllm_realtime() -> tuple[Any, Any, Any, Any]:
 
     base_model_paths = [
         BaseModelPath(
-            name=VOXTRAL_SERVED_MODEL_NAME,
+            name=settings.model.served_model_name,
             model_path=str(model_dir),
         )
     ]

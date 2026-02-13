@@ -11,9 +11,9 @@ import asyncio
 import logging
 import argparse
 
-from params import config
+import config
 from client import IdleClient
-from params.env import apply_key_overrides, derive_default_server
+from utils.env import apply_key_overrides, derive_default_server
 from data.printing import dim, format_fail, format_info, format_pass, format_error, section_header
 
 logger = logging.getLogger(__name__)

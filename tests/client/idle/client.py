@@ -8,24 +8,15 @@ from __future__ import annotations
 import time
 import asyncio
 import logging
-from dataclasses import dataclass
 
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
+from state.idle import IdleTestResult
 from utils.network import enable_tcp_nodelay
 from client.shared.connection import build_url, get_ws_options
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class IdleTestResult:
-    success: bool
-    elapsed_s: float
-    close_code: int | None = None
-    close_reason: str | None = None
-    error: str | None = None
 
 
 class IdleClient:

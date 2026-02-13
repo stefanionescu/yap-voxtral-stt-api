@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 from collections.abc import Callable
 
+import orjson
 from fastapi import WebSocket, WebSocketDisconnect
 
 from src.state import EnvelopeState
@@ -28,7 +28,7 @@ class EnvelopeWebSocket:
 
     async def send_text(self, text: str) -> None:
         try:
-            event = json.loads(text)
+            event = orjson.loads(text)
         except Exception:
             envelope = {
                 WS_KEY_TYPE: "realtime.raw",
@@ -36,7 +36,7 @@ class EnvelopeWebSocket:
                 WS_KEY_REQUEST_ID: self._state.request_id,
                 WS_KEY_PAYLOAD: {"raw": text},
             }
-            await self._ws.send_text(json.dumps(envelope))
+            await self._ws.send_text(orjson.dumps(envelope).decode("utf-8"))
             return
 
         msg_type = event.get("type")
@@ -50,7 +50,7 @@ class EnvelopeWebSocket:
             WS_KEY_PAYLOAD: payload,
         }
         try:
-            await self._ws.send_text(json.dumps(envelope))
+            await self._ws.send_text(orjson.dumps(envelope).decode("utf-8"))
         except WebSocketDisconnect:
             if self._on_disconnect is not None:
                 self._on_disconnect()

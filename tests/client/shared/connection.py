@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from params import config
+import config
 from utils.network import ws_url, append_auth_query
 
 

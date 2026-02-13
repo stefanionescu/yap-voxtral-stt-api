@@ -6,7 +6,7 @@ import socket as _sock
 from contextlib import suppress
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
-from params import config
+import config
 
 
 def ws_url(server: str, secure: bool) -> str:

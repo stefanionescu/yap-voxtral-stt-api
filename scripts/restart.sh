@@ -8,5 +8,5 @@ source "${SCRIPT_DIR}/lib/log.sh"
 
 log_info "[restart] Restarting server..."
 
-FULL_CLEANUP=0 bash "${SCRIPT_DIR}/stop.sh"
+bash "${SCRIPT_DIR}/stop.sh" "$@"
 exec bash "${SCRIPT_DIR}/main.sh" "$@"

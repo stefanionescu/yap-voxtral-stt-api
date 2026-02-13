@@ -7,7 +7,7 @@ import time
 import asyncio
 import logging
 
-from params import config
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class MessageHandler:
     @staticmethod
     def _parse(raw) -> dict | None:
         try:
-            if isinstance(raw, (bytes, bytearray)):
+            if isinstance(raw, bytes | bytearray):
                 raw = raw.decode("utf-8", errors="ignore")
             return json.loads(raw)
         except Exception:

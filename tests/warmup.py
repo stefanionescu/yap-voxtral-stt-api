@@ -12,10 +12,10 @@ import logging
 import argparse
 from pathlib import Path
 
-from params import config
+import config
 from client import WarmupClient
 from data.printing import dim, format_error, section_header
-from params.env import apply_key_overrides, derive_default_server
+from utils.env import apply_key_overrides, derive_default_server
 from utils import (
     SAMPLES_DIR,
     find_sample_files,

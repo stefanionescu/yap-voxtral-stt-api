@@ -7,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 
-from ..config.models import VOXTRAL_MODEL_ID, VOXTRAL_MODEL_DIR, VOXTRAL_TEKKEN_FILENAME, VOXTRAL_TRANSCRIPTION_DELAY_MS
+from src.state.settings import ModelSettings
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,8 @@ def _validate_delay_ms(delay_ms: int) -> int:
     return delay_ms
 
 
-def _patch_tekken_json(model_dir: Path, *, delay_ms: int) -> bool:
-    tekken_path = model_dir / VOXTRAL_TEKKEN_FILENAME
+def _patch_tekken_json(model_dir: Path, *, tekken_filename: str, delay_ms: int) -> bool:
+    tekken_path = model_dir / tekken_filename
     if not tekken_path.exists():
         logger.warning("voxtral: tekken file not found at %s (skipping delay patch)", tekken_path)
         return False
@@ -42,37 +42,37 @@ def _patch_tekken_json(model_dir: Path, *, delay_ms: int) -> bool:
     return True
 
 
-def _looks_like_snapshot(model_dir: Path) -> bool:
+def _looks_like_snapshot(model_dir: Path, *, tekken_filename: str) -> bool:
     # Voxtral repos don't necessarily ship a transformers-style config.json.
     if not (model_dir / "params.json").exists():
         return False
-    if not (model_dir / VOXTRAL_TEKKEN_FILENAME).exists():
+    if not (model_dir / tekken_filename).exists():
         return False
     return any(model_dir.glob("*.safetensors"))
 
 
-def ensure_voxtral_snapshot() -> Path:
+def ensure_voxtral_snapshot(model: ModelSettings) -> Path:
     """Ensure we have a writable local model directory and tekken delay patch applied."""
-    delay_ms = _validate_delay_ms(int(VOXTRAL_TRANSCRIPTION_DELAY_MS))
+    delay_ms = _validate_delay_ms(int(model.transcription_delay_ms))
 
-    model_dir = VOXTRAL_MODEL_DIR
+    model_dir = model.model_dir
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    if not _looks_like_snapshot(model_dir):
+    if not _looks_like_snapshot(model_dir, tekken_filename=model.tekken_filename):
         token = (os.getenv("HF_TOKEN") or "").strip() or None
 
         # Local snapshot avoids mutating the HF cache and lets us patch tekken.json safely.
         from huggingface_hub import snapshot_download  # noqa: PLC0415
 
-        logger.info("voxtral: downloading snapshot repo_id=%s -> %s", VOXTRAL_MODEL_ID, model_dir)
+        logger.info("voxtral: downloading snapshot repo_id=%s -> %s", model.model_id, model_dir)
         snapshot_download(
-            repo_id=VOXTRAL_MODEL_ID,
+            repo_id=model.model_id,
             local_dir=str(model_dir),
             local_dir_use_symlinks=False,
             token=token,
         )
 
-    _patch_tekken_json(model_dir, delay_ms=delay_ms)
+    _patch_tekken_json(model_dir, tekken_filename=model.tekken_filename, delay_ms=delay_ms)
     return model_dir
 
 

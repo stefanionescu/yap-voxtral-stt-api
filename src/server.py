@@ -16,7 +16,7 @@ configure_log_filters()
 from fastapi import FastAPI, WebSocket  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
 
-from src.config.logging import configure_logging  # noqa: E402
+from src.runtime.logging import configure_logging  # noqa: E402
 from src.runtime.dependencies import build_runtime_deps  # noqa: E402
 from src.handlers.websocket import handle_websocket_connection  # noqa: E402
 

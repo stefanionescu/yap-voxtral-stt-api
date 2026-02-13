@@ -33,12 +33,13 @@ test/benchmark clients.
 - Envelope protocol for easy integration with existing clients.
 - Strong connection lifecycle enforcement: idle timeout (150s), max duration (90 minutes), and a capacity guard (`MAX_CONCURRENT_CONNECTIONS`).
 - Model-inherent “lookahead” latency is configurable via `VOXTRAL_TRANSCRIPTION_DELAY_MS` (patched into `tekken.json`).
+- Receive/compute decoupling for steady streaming: inbound client messages are buffered in a bounded queue per connection.
 - Bench harness for concurrency sweeps (8 / 32 / 64 / 100).
 
 ## Prerequisites
 
 For running the server:
-- NVIDIA GPU host (L40S recommended) with a working CUDA driver stack.
+- Linux NVIDIA GPU host (L40S recommended) with a working CUDA driver stack.
 - CUDA 13 runtime for the Python stack (the launcher installs cu130 wheels).
 - Python 3.11 recommended (the scripts will use `python3.11` if available).
 - `uv` recommended (used for GPU-friendly installs and PyTorch wheel selection).
@@ -62,6 +63,8 @@ Optional but recommended knobs:
 ```bash
 export VOXTRAL_TRANSCRIPTION_DELAY_MS=400   # multiples of 80ms (80..2400)
 export WS_MAX_CONNECTION_DURATION_S=5400    # default: 90 minutes
+export WS_IDLE_TIMEOUT_S=150               # default: 150 seconds
+export WS_INBOUND_QUEUE_MAX=256            # bounded per-connection inbound queue
 ```
 
 Start the server:
@@ -77,6 +80,12 @@ Notes:
 - Logs: `tail -f server.log`
 - Status: `bash scripts/status.sh`
 - Bind/port: set `SERVER_BIND_HOST` / `SERVER_PORT` (defaults: `0.0.0.0:8000`)
+
+Start without tailing logs (recommended for background deployments):
+
+```bash
+TAIL_LOGS=0 bash scripts/main.sh
+```
 
 ## Health Check
 
@@ -164,10 +173,10 @@ bash scripts/stop.sh
 bash scripts/restart.sh
 ```
 
-Full cleanup (wipes `.venv`, `models/`, logs):
+Nuke (wipes `.venv/`, `models/`, logs, and common caches under `~/.cache/`):
 
 ```bash
-FULL_CLEANUP=1 bash scripts/stop.sh
+NUKE=1 bash scripts/stop.sh --nuke
 ```
 
 ## Linting

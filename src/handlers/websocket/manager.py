@@ -9,12 +9,6 @@ from fastapi import WebSocket
 
 from src.runtime.dependencies import RuntimeDeps
 from src.handlers.limits import SlidingWindowRateLimiter
-from src.config import (
-    WS_CANCEL_WINDOW_SECONDS,
-    WS_MAX_CANCELS_PER_WINDOW,
-    WS_MESSAGE_WINDOW_SECONDS,
-    WS_MAX_MESSAGES_PER_WINDOW,
-)
 from src.config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_ERROR_AUTH_FAILED,
@@ -30,20 +24,20 @@ from .message_loop import run_message_loop
 logger = logging.getLogger(__name__)
 
 
-def _create_rate_limiters() -> tuple[SlidingWindowRateLimiter, SlidingWindowRateLimiter]:
+def _create_rate_limiters(runtime_deps: RuntimeDeps) -> tuple[SlidingWindowRateLimiter, SlidingWindowRateLimiter]:
     message_limiter = SlidingWindowRateLimiter(
-        limit=WS_MAX_MESSAGES_PER_WINDOW,
-        window_seconds=WS_MESSAGE_WINDOW_SECONDS,
+        limit=runtime_deps.settings.limits.ws_max_messages_per_window,
+        window_seconds=runtime_deps.settings.limits.ws_message_window_seconds,
     )
     cancel_limiter = SlidingWindowRateLimiter(
-        limit=WS_MAX_CANCELS_PER_WINDOW,
-        window_seconds=WS_CANCEL_WINDOW_SECONDS,
+        limit=runtime_deps.settings.limits.ws_max_cancels_per_window,
+        window_seconds=runtime_deps.settings.limits.ws_cancel_window_seconds,
     )
     return message_limiter, cancel_limiter
 
 
 async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
-    if not await authenticate_websocket(ws):
+    if not await authenticate_websocket(ws, expected_api_key=runtime_deps.settings.auth.api_key):
         await reject_connection(
             ws,
             error_code=WS_ERROR_AUTH_FAILED,
@@ -81,10 +75,15 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
             return
         admitted = True
 
-        lifecycle = WebSocketLifecycle(ws)
+        lifecycle = WebSocketLifecycle(
+            ws,
+            idle_timeout_s=runtime_deps.settings.websocket.idle_timeout_s,
+            watchdog_tick_s=runtime_deps.settings.websocket.watchdog_tick_s,
+            max_connection_duration_s=runtime_deps.settings.websocket.max_connection_duration_s,
+        )
         lifecycle.start()
 
-        message_limiter, cancel_limiter = _create_rate_limiters()
+        message_limiter, cancel_limiter = _create_rate_limiters(runtime_deps)
 
         logger.info("WebSocket connection accepted. Active: %s", runtime_deps.connections.get_connection_count())
         session_id = await run_message_loop(ws, lifecycle, message_limiter, cancel_limiter, runtime_deps)

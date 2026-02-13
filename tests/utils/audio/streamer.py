@@ -10,7 +10,7 @@ from typing import Any
 from contextlib import suppress
 from collections.abc import Callable
 
-from params import config
+import config
 
 from .chunks import iter_pcm16_chunks
 

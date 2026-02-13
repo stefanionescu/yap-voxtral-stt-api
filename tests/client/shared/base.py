@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import websockets
 
-from params import config
+import config
 from utils.messages import MessageHandler
 from utils.network import enable_tcp_nodelay
 

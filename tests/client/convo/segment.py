@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 
-from params import config
+import config
 from utils.audio import AudioStreamer
 
 

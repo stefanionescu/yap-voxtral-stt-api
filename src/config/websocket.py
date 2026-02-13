@@ -1,8 +1,6 @@
-"""WebSocket protocol configuration and constants."""
+"""WebSocket protocol configuration (constants only)."""
 
 from __future__ import annotations
-
-import os
 
 # Envelope keys (server protocol)
 WS_KEY_TYPE = "type"
@@ -20,12 +18,20 @@ WS_CLOSE_MAX_DURATION_CODE = 4003
 WS_CLOSE_IDLE_REASON = "idle timeout"
 WS_CLOSE_MAX_DURATION_REASON = "max connection duration reached"
 
-# Idle watchdog
-WS_IDLE_TIMEOUT_S = float(os.getenv("WS_IDLE_TIMEOUT_S", "150"))
-WS_WATCHDOG_TICK_S = float(os.getenv("WS_WATCHDOG_TICK_S", "5"))
+# Connection lifecycle (env-driven in runtime)
+ENV_WS_IDLE_TIMEOUT_S = "WS_IDLE_TIMEOUT_S"
+DEFAULT_WS_IDLE_TIMEOUT_S = 150.0
+
+ENV_WS_WATCHDOG_TICK_S = "WS_WATCHDOG_TICK_S"
+DEFAULT_WS_WATCHDOG_TICK_S = 5.0
 
 # Hard max connection duration (default: 90 minutes).
-WS_MAX_CONNECTION_DURATION_S = float(os.getenv("WS_MAX_CONNECTION_DURATION_S", str(90 * 60)))
+ENV_WS_MAX_CONNECTION_DURATION_S = "WS_MAX_CONNECTION_DURATION_S"
+DEFAULT_WS_MAX_CONNECTION_DURATION_S = float(90 * 60)
+
+# Inbound buffering (decouples receive from engine scheduling)
+ENV_WS_INBOUND_QUEUE_MAX = "WS_INBOUND_QUEUE_MAX"
+DEFAULT_WS_INBOUND_QUEUE_MAX = 256
 
 # Errors (payload.code values)
 WS_ERROR_AUTH_FAILED = "authentication_failed"
@@ -36,24 +42,29 @@ WS_ERROR_RATE_LIMITED = "rate_limited"
 WS_ERROR_INTERNAL = "internal_error"
 
 __all__ = [
-    "WS_KEY_TYPE",
-    "WS_KEY_SESSION_ID",
-    "WS_KEY_REQUEST_ID",
-    "WS_KEY_PAYLOAD",
-    "WS_CLOSE_CLIENT_REQUEST_CODE",
-    "WS_CLOSE_UNAUTHORIZED_CODE",
+    "DEFAULT_WS_IDLE_TIMEOUT_S",
+    "DEFAULT_WS_INBOUND_QUEUE_MAX",
+    "DEFAULT_WS_MAX_CONNECTION_DURATION_S",
+    "DEFAULT_WS_WATCHDOG_TICK_S",
+    "ENV_WS_IDLE_TIMEOUT_S",
+    "ENV_WS_INBOUND_QUEUE_MAX",
+    "ENV_WS_MAX_CONNECTION_DURATION_S",
+    "ENV_WS_WATCHDOG_TICK_S",
     "WS_CLOSE_BUSY_CODE",
+    "WS_CLOSE_CLIENT_REQUEST_CODE",
     "WS_CLOSE_IDLE_CODE",
-    "WS_CLOSE_MAX_DURATION_CODE",
     "WS_CLOSE_IDLE_REASON",
+    "WS_CLOSE_MAX_DURATION_CODE",
     "WS_CLOSE_MAX_DURATION_REASON",
-    "WS_IDLE_TIMEOUT_S",
-    "WS_WATCHDOG_TICK_S",
-    "WS_MAX_CONNECTION_DURATION_S",
+    "WS_CLOSE_UNAUTHORIZED_CODE",
     "WS_ERROR_AUTH_FAILED",
-    "WS_ERROR_SERVER_AT_CAPACITY",
+    "WS_ERROR_INTERNAL",
     "WS_ERROR_INVALID_MESSAGE",
     "WS_ERROR_INVALID_PAYLOAD",
     "WS_ERROR_RATE_LIMITED",
-    "WS_ERROR_INTERNAL",
+    "WS_ERROR_SERVER_AT_CAPACITY",
+    "WS_KEY_PAYLOAD",
+    "WS_KEY_REQUEST_ID",
+    "WS_KEY_SESSION_ID",
+    "WS_KEY_TYPE",
 ]

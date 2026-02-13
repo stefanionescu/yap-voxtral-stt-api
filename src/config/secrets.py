@@ -1,12 +1,9 @@
-"""Secrets and authentication configuration."""
+"""Secrets configuration (constants only)."""
 
 from __future__ import annotations
 
-import os
+ENV_VOXTRAL_API_KEY = "VOXTRAL_API_KEY"
 
-
-def get_voxtral_api_key() -> str:
-    return (os.getenv("VOXTRAL_API_KEY") or "").strip()
-
-
-__all__ = ["get_voxtral_api_key"]
+__all__ = [
+    "ENV_VOXTRAL_API_KEY",
+]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import uuid
 
-from params import config
+import config
 from client.shared.base import WSClientBase
 from utils.messages import BenchMessageHandler
 from data.metrics import calculate_basic_metrics, calculate_detailed_metrics

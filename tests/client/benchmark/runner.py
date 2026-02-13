@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import asyncio
 
-from params import config
+import config
 
 from .client import BenchClient, CapacityRejected
 from .timeout import compute_stream_timeout_seconds_for

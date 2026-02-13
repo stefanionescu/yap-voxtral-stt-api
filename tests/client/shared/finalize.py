@@ -7,7 +7,7 @@ import time
 import asyncio
 from contextlib import suppress
 
-from params import config
+import config
 
 
 async def close_ws_gracefully(ws, base) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from params import config
+import config
 
 from .fmt import dim
 
