@@ -83,16 +83,21 @@ async def run(args: argparse.Namespace) -> int:
             # Stagger starts to avoid a thundering herd.
             await asyncio.sleep(secrets.randbelow(200) / 1000.0)
 
-            client = RealtimeClient(args.server, args.secure, debug=args.debug)
-            session_id = f"bench-{uuid.uuid4()}"
-            request_id = f"utt-{uuid.uuid4()}"
-            res = await client.run_stream(
-                pcm,
-                session_id=session_id,
-                request_id=request_id,
-                rtf=args.rtf,
-                timeout_s=float(args.timeout),
-            )
+            try:
+                client = RealtimeClient(args.server, args.secure, debug=args.debug)
+                session_id = f"bench-{uuid.uuid4()}"
+                request_id = f"utt-{uuid.uuid4()}"
+                res = await client.run_stream(
+                    pcm,
+                    session_id=session_id,
+                    request_id=request_id,
+                    rtf=args.rtf,
+                    timeout_s=float(args.timeout),
+                )
+            except Exception as exc:
+                errors += 1
+                error_counts[f"exception: {type(exc).__name__}: {exc}"] += 1
+                return
             if res.error:
                 if "server_at_capacity" in res.error:
                     rejected += 1
