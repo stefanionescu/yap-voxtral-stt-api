@@ -34,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--secure", action="store_true", help="Use wss://")
     p.add_argument("--file", default="mid.wav", help="Audio file name in samples/ or absolute path")
     p.add_argument("--rtf", type=float, default=2.0, help="Real-time factor (1.0=realtime, >1 faster)")
+    p.add_argument("--timeout", type=float, default=120.0, help="Timeout waiting for final (seconds)")
     p.add_argument("--debug", action="store_true")
     p.add_argument("--full-text", action="store_true")
     return p.parse_args()
@@ -77,7 +78,13 @@ async def run(args: argparse.Namespace) -> int:
     print()
 
     client = RealtimeClient(args.server, args.secure, debug=args.debug)
-    res = await client.run_stream(pcm, session_id=session_id, request_id=request_id, rtf=args.rtf)
+    res = await client.run_stream(
+        pcm,
+        session_id=session_id,
+        request_id=request_id,
+        rtf=args.rtf,
+        timeout_s=float(args.timeout),
+    )
 
     if res.error:
         print(format_error("Warmup error", str(res.error)))

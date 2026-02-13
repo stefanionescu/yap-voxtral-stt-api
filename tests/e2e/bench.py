@@ -35,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--concurrency", type=int, default=32)
     p.add_argument("--rtf", type=float, default=2.0)
     p.add_argument("--file", default="mid.wav", help="Audio file name in samples/ or absolute path")
+    p.add_argument("--timeout", type=float, default=120.0, help="Per-request timeout (seconds)")
     p.add_argument("--debug", action="store_true")
     return p.parse_args()
 
@@ -83,7 +84,13 @@ async def run(args: argparse.Namespace) -> int:
             client = RealtimeClient(args.server, args.secure, debug=args.debug)
             session_id = f"bench-{uuid.uuid4()}"
             request_id = f"utt-{uuid.uuid4()}"
-            res = await client.run_stream(pcm, session_id=session_id, request_id=request_id, rtf=args.rtf)
+            res = await client.run_stream(
+                pcm,
+                session_id=session_id,
+                request_id=request_id,
+                rtf=args.rtf,
+                timeout_s=float(args.timeout),
+            )
             if res.error:
                 if "server_at_capacity" in res.error:
                     rejected += 1
