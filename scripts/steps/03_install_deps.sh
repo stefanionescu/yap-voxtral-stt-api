@@ -19,6 +19,7 @@ if command -v uv >/dev/null 2>&1; then
   uv pip install --python "${VENV_DIR}/bin/python" -U pip
   uv pip install --python "${VENV_DIR}/bin/python" -r "${REQ_FILE}" \
     --extra-index-url "${PYTORCH_CUDA_INDEX_URL}" \
+    --index-strategy unsafe-best-match \
     --torch-backend=cu130
 else
   log_warn "[deps] uv not found; falling back to pip"

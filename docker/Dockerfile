@@ -19,6 +19,7 @@ RUN python3.11 -m pip install -U pip \
     && uv pip install --python /workspace/.venv/bin/python -U pip \
     && uv pip install --python /workspace/.venv/bin/python -r /workspace/requirements.txt \
         --extra-index-url "${PYTORCH_CUDA_INDEX_URL}" \
+        --index-strategy unsafe-best-match \
         --torch-backend=cu130
 
 COPY src /workspace/src
