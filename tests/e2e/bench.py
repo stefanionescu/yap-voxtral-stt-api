@@ -10,6 +10,7 @@ import asyncio
 import logging
 import secrets
 import argparse
+from collections import Counter
 from pathlib import Path
 
 if __package__ in {None, ""}:
@@ -74,6 +75,7 @@ async def run(args: argparse.Namespace) -> int:
     results: list[dict[str, float]] = []
     rejected = 0
     errors = 0
+    error_counts: Counter[str] = Counter()
 
     async def worker(i: int) -> None:
         nonlocal rejected, errors
@@ -96,6 +98,7 @@ async def run(args: argparse.Namespace) -> int:
                     rejected += 1
                 else:
                     errors += 1
+                error_counts[res.error] += 1
             else:
                 results.append(res.metrics)
 
@@ -105,6 +108,14 @@ async def run(args: argparse.Namespace) -> int:
     if rejected or errors:
         print(dim(f"  rejected(capacity): {rejected}"))
         print(dim(f"  errors: {errors}"))
+        if error_counts:
+            top = error_counts.most_common(5)
+            print(dim("  top errors:"))
+            for msg, count in top:
+                m = msg.strip().replace("\n", " ")
+                if len(m) > 180:
+                    m = m[:180] + "..."
+                print(dim(f"    {count}x {m}"))
         print()
 
     print_benchmark_summary("Voxtral Bench", results)
