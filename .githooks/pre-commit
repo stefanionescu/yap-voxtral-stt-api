@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${HOOK_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+if [[ ! -f "scripts/lint.sh" ]]; then
+  echo "pre-commit: scripts/lint.sh not found" >&2
+  exit 1
+fi
+
+tmp="$(mktemp)"
+if bash scripts/lint.sh >"${tmp}" 2>&1; then
+  rm -f "${tmp}"
+  exit 0
+fi
+
+cat "${tmp}" >&2
+rm -f "${tmp}"
+exit 1

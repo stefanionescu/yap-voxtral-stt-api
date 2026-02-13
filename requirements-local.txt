@@ -1,0 +1,7 @@
+# Lightweight deps for running test clients locally without installing vLLM.
+
+websockets==14.2
+httpx==0.28.1
+numpy==2.2.2
+soundfile==0.13.1
+
