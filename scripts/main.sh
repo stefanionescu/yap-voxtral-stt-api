@@ -12,6 +12,7 @@ source "${SCRIPT_DIR}/lib/log.sh"
 SERVER_BIND_HOST="${SERVER_BIND_HOST:-0.0.0.0}"
 SERVER_PORT="${SERVER_PORT:-8000}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${SERVER_PORT}/healthz}"
+HEALTH_TIMEOUT_S="${HEALTH_TIMEOUT_S:-600}"
 
 VENV_DIR="${VENV_DIR:-${ROOT_DIR}/.venv}"
 VLLM_WHEELS_INDEX_URL="${VLLM_WHEELS_INDEX_URL:-https://wheels.vllm.ai/nightly}"
@@ -93,7 +94,7 @@ start_server() {
 
 await_health() {
   log_info "[main] Waiting for health: ${HEALTH_URL}"
-  local deadline=$((SECONDS + 120))
+  local deadline=$((SECONDS + HEALTH_TIMEOUT_S))
   while ((SECONDS <= deadline)); do
     if command -v curl >/dev/null 2>&1; then
       if curl -fsS "${HEALTH_URL}" >/dev/null 2>&1; then
@@ -104,7 +105,7 @@ await_health() {
     sleep 1
   done
 
-  log_err "[main] ✗ server did not become healthy within 120s"
+  log_err "[main] ✗ server did not become healthy within ${HEALTH_TIMEOUT_S}s"
   log_err "[main] tail -n 200 ${ROOT_DIR}/server.log"
   exit 1
 }
