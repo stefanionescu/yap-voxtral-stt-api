@@ -55,13 +55,27 @@ VLLM_CONFIG_FORMAT = os.getenv("VLLM_CONFIG_FORMAT", "mistral").strip()
 VLLM_LOAD_FORMAT = os.getenv("VLLM_LOAD_FORMAT", "mistral").strip()
 
 # Optional JSON string for vLLM compilation config.
-_comp_raw = os.getenv("VLLM_COMPILATION_CONFIG", "").strip()
-VLLM_COMPILATION_CONFIG: dict[str, Any] | None = None
-if _comp_raw:
+#
+# Voxtral realtime currently does not support full CUDA graphs in vLLM.
+# Default to PIECEWISE to avoid engine init failures, but allow overriding
+# or disabling via env.
+_DEFAULT_COMPILATION_CONFIG: dict[str, Any] = {"cudagraph_mode": "PIECEWISE"}
+
+_comp_raw = os.getenv("VLLM_COMPILATION_CONFIG")
+VLLM_COMPILATION_CONFIG: dict[str, Any] | None
+if _comp_raw is None or not _comp_raw.strip():
+    VLLM_COMPILATION_CONFIG = _DEFAULT_COMPILATION_CONFIG
+else:
     try:
-        VLLM_COMPILATION_CONFIG = json.loads(_comp_raw)
+        parsed = json.loads(_comp_raw)
+        if parsed is None:
+            VLLM_COMPILATION_CONFIG = None
+        elif isinstance(parsed, dict):
+            VLLM_COMPILATION_CONFIG = parsed
+        else:
+            VLLM_COMPILATION_CONFIG = _DEFAULT_COMPILATION_CONFIG
     except Exception:
-        VLLM_COMPILATION_CONFIG = None
+        VLLM_COMPILATION_CONFIG = _DEFAULT_COMPILATION_CONFIG
 
 # If set, we pass disable_compile_cache to engine args when supported.
 VLLM_DISABLE_COMPILE_CACHE = _bool_env("VLLM_DISABLE_COMPILE_CACHE", True)
