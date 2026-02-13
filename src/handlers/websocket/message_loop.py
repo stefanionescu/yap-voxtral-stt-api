@@ -6,6 +6,7 @@ import asyncio
 import logging
 import contextlib
 from typing import Any
+from typing import Literal
 from collections.abc import Callable, Awaitable
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -51,18 +52,18 @@ async def _handle_control_message(
     *,
     session_id: str,
     request_id: str,
-) -> bool:
+) -> Literal["none", "continue", "close"]:
     if msg_type == "ping":
         await safe_send_envelope(ws, msg_type="pong", session_id=session_id, request_id=request_id, payload={})
-        return False
+        return "continue"
     if msg_type == "pong":
-        return False
+        return "continue"
     if msg_type == "end":
         await safe_send_envelope(ws, msg_type="session_end", session_id=session_id, request_id=request_id, payload={})
         with contextlib.suppress(Exception):
             await ws.close(code=WS_CLOSE_CLIENT_REQUEST_CODE)
-        return True
-    return False
+        return "close"
+    return "none"
 
 
 async def _parse_or_send_error(ws: WebSocket, raw: str, state: EnvelopeState) -> dict[str, Any] | None:
@@ -287,8 +288,11 @@ async def run_message_loop(
                 if not ok:
                     continue
 
-            if await _handle_control_message(ws, msg_type, session_id=session_id, request_id=request_id):
+            control = await _handle_control_message(ws, msg_type, session_id=session_id, request_id=request_id)
+            if control == "close":
                 return session_id
+            if control == "continue":
+                continue
 
             handler = HANDLERS.get(msg_type)
             if handler is not None:
