@@ -4,7 +4,7 @@ import time
 import asyncio
 from contextlib import suppress
 
-import config
+from tests import config
 
 
 async def wait_for_done(handler, ws, *, session_id: str, request_id: str, timeout_s: float) -> None:

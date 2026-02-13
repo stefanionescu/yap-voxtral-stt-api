@@ -12,9 +12,9 @@ import logging
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-from state.idle import IdleTestResult
-from utils.network import enable_tcp_nodelay
-from client.shared.connection import build_url, get_ws_options
+from tests.state.idle import IdleTestResult
+from tests.utils.network import enable_tcp_nodelay
+from tests.client.shared.connection import build_url, get_ws_options
 
 logger = logging.getLogger(__name__)
 

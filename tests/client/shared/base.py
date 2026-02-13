@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Any
 
 import websockets
 
-import config
-from utils.messages import MessageHandler
-from utils.network import enable_tcp_nodelay
+from tests import config
+from tests.utils.messages import MessageHandler
+from tests.utils.network import enable_tcp_nodelay
 
 from .connection import build_url, get_ws_options
 from .finalize import ensure_completion_and_close as _ensure_completion_and_close_fn
@@ -24,7 +24,7 @@ from .timing import (
 )
 
 if TYPE_CHECKING:
-    from utils.audio import AudioStreamer
+    from tests.utils.audio import AudioStreamer
 
 
 class WSClientBase:

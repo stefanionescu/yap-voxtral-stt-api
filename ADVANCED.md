@@ -83,7 +83,7 @@ bash scripts/lib/doctor.sh
 
 ## vLLM Configuration
 
-All vLLM knobs are env-driven and loaded at server startup (`src/runtime/settings_loader.py`),
+All vLLM knobs are env-driven and loaded at server startup (`src/runtime/settings.py`),
 then passed into `AsyncEngineArgs` (`src/runtime/vllm.py`).
 
 Common knobs:
@@ -91,7 +91,7 @@ Common knobs:
 | Variable | Default | Notes |
 |---------|---------|------|
 | `VLLM_GPU_MEMORY_UTILIZATION` | `0.92` | Higher = more KV capacity, higher OOM risk |
-| `VLLM_MAX_MODEL_LEN` | `67500` | ~= 90 minutes at ~80ms/token |
+| `VLLM_MAX_MODEL_LEN` | `4096` | ~= 5.5 minutes at ~80ms/token |
 | `VLLM_MAX_NUM_SEQS` | `128` | Upper bound on concurrent sequences in the scheduler |
 | `VLLM_MAX_NUM_BATCHED_TOKENS` | `4096` | Higher = throughput, worse tail latency under load |
 | `VLLM_KV_CACHE_DTYPE` | `auto` | FP8 variants can reduce KV memory on L40S/H100 (vLLM-dependent) |
@@ -110,12 +110,12 @@ Voxtral streaming timing:
 This repo uses shell scripts to keep deployments repeatable.
 
 - `scripts/main.sh` runs `scripts/steps/*` in order:
-  - `01_require_env.sh` (validates required env vars)
-  - `02_venv.sh` (creates `.venv/` if missing)
-  - `03_install_deps.sh` (installs pinned deps; CUDA 13 torch backend)
-  - `04_start_server.sh` (starts uvicorn; writes `server.pid`)
-  - `05_wait_health.sh` (polls `/healthz`)
-  - `06_tail_logs.sh` (tails `server.log` unless `TAIL_LOGS=0`)
+  - `01-require-env.sh` (validates required env vars)
+  - `02-venv.sh` (creates `.venv/` if missing)
+  - `03-install-deps.sh` (installs pinned deps; CUDA 13 torch backend)
+  - `04-start-server.sh` (starts uvicorn; writes `server.pid`)
+  - `05-wait-health.sh` (polls `/healthz`)
+  - `06-tail-logs.sh` (tails `server.log` unless `TAIL_LOGS=0`)
 
 Stop modes:
 
@@ -158,8 +158,8 @@ When auth fails, the server accepts the socket, sends a structured `error`, then
 ### Connection Lifecycle
 
 Server policy:
-- Idle timeout: `WS_IDLE_TIMEOUT_S` (default: 150s) closed with code `4000`
-- Max duration: `WS_MAX_CONNECTION_DURATION_S` (default: 5400s = 90 min) closed with code `4003`
+- Idle timeout: `WS_IDLE_TIMEOUT_S` (default: 150s; set to `0` to disable) closed with code `4000`
+- Max duration: `WS_MAX_CONNECTION_DURATION_S` (default: 5400s = 90 min; set to `0` to disable) closed with code `4003`
 - Capacity guard: `MAX_CONCURRENT_CONNECTIONS` (required) rejects with code `4002`
 
 What counts as activity:
@@ -283,12 +283,14 @@ Client recommendations:
 
 ## Connection Management
 
-This server is designed for “voice agent” usage where sessions are utterance-scoped:
-- Keep the socket open while a user is talking.
-- Finalize quickly (`commit final=true`).
-- Close the socket after you receive `transcription.done`.
+This server supports long-lived WebSocket connections (hours/days) with many utterances per connection:
+- Each utterance is scoped by `request_id`.
+- Finalize quickly (`commit final=true`) and start a new `request_id` for the next utterance.
+- You may keep the socket open across utterances; send `{"type":"ping",...}` periodically (or set `WS_IDLE_TIMEOUT_S=0`).
 
-Long-running meeting-style sessions are possible but will reduce achievable concurrency on a single GPU.
+To prevent unbounded GPU/engine memory growth from a never-ending stream, the server enforces
+`MAX_UTTERANCE_AUDIO_SECONDS` (default: 300s). If exceeded, the active request is cancelled with an
+`error` (`code: "utterance_too_long"`).
 
 ## Capacity and Latency Notes
 
@@ -308,31 +310,31 @@ All clients speak the same `/api/asr-streaming` envelope protocol.
 Warmup:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/warmup.py --server localhost:8000 --file mid.wav
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.warmup --server localhost:8000 --file mid.wav
 ```
 
 Benchmark:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/bench.py --server localhost:8000 --n 100 --concurrency 100 --file mid.wav
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.bench --server localhost:8000 --n 100 --concurrency 100 --file mid.wav
 ```
 
 Idle timeout:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/idle.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.idle --server localhost:8000
 ```
 
 Conversation (two utterances over one connection):
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/convo.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.convo --server localhost:8000
 ```
 
 Remote client:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/remote.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.remote --server localhost:8000
 ```
 
 ## Troubleshooting
@@ -340,7 +342,7 @@ VOXTRAL_API_KEY=secret_token python tests/remote.py --server localhost:8000
 ### vLLM Install Fails
 
 - Confirm you are using `uv` on a GPU host.
-- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/steps/03_install_deps.sh`).
+- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/steps/03-install-deps.sh`).
 - Run `bash scripts/lib/doctor.sh` to confirm `torch.version.cuda` is `13.x`.
 
 ### Model Download Is Slow or Fails

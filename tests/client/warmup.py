@@ -5,10 +5,10 @@ from __future__ import annotations
 import time
 import uuid
 
-import config
-from utils.messages import MessageHandler
-from client.shared.base import WSClientBase
-from data.metrics import calculate_basic_metrics, calculate_detailed_metrics, compute_stream_timeout_seconds
+from tests import config
+from tests.utils.messages import MessageHandler
+from tests.client.shared.base import WSClientBase
+from tests.data.metrics import calculate_basic_metrics, calculate_detailed_metrics, compute_stream_timeout_seconds
 
 
 class WarmupClient(WSClientBase):

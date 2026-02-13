@@ -54,7 +54,6 @@ Set required environment variables:
 
 ```bash
 export VOXTRAL_API_KEY="secret_token"       # required for every websocket connection
-export MAX_CONCURRENT_CONNECTIONS=100       # optional (default: 100)
 export HF_TOKEN="hf_your_token"             # recommended for model downloads
 ```
 
@@ -64,8 +63,8 @@ Optional but recommended knobs:
 
 ```bash
 export VOXTRAL_TRANSCRIPTION_DELAY_MS=400   # multiples of 80ms (80..2400)
-export WS_MAX_CONNECTION_DURATION_S=5400    # default: 90 minutes
-export WS_IDLE_TIMEOUT_S=150               # default: 150 seconds
+export WS_MAX_CONNECTION_DURATION_S=5400    # default: 90 minutes (set to 0 to disable)
+export WS_IDLE_TIMEOUT_S=150               # default: 150 seconds (set to 0 to disable)
 export WS_INBOUND_QUEUE_MAX=256            # bounded per-connection inbound queue
 ```
 
@@ -144,7 +143,7 @@ Then point clients at a running server:
 
 ```bash
 export VOXTRAL_API_KEY="secret_token"
-python tests/warmup.py --server localhost:8000
+python -m tests.e2e.warmup --server localhost:8000
 ```
 
 ## Test Clients
@@ -152,20 +151,20 @@ python tests/warmup.py --server localhost:8000
 All runnable client scripts live under `tests/`:
 
 - Sample audio lives under `samples/`.
-- `tests/warmup.py` – one utterance (default: `samples/mid.wav`) + metrics.
-- `tests/bench.py` – concurrent load generator with p50/p95 summaries.
-- `tests/idle.py` – validates idle timeout close behavior (default: code `4000`).
-- `tests/convo.py` – two utterances over one WebSocket connection.
-- `tests/remote.py` – warmup-equivalent client for remote GPU deployments.
+- `tests/e2e/warmup.py` – one utterance (default: `samples/mid.wav`) + metrics.
+- `tests/e2e/bench.py` – concurrent load generator with p50/p95 summaries.
+- `tests/e2e/idle.py` – validates idle timeout close behavior (default: code `4000`).
+- `tests/e2e/convo.py` – two utterances over one WebSocket connection.
+- `tests/e2e/remote.py` – warmup-equivalent client for remote GPU deployments.
 
 Examples:
 
 ```bash
-VOXTRAL_API_KEY=secret_token python tests/warmup.py --server localhost:8000
-VOXTRAL_API_KEY=secret_token python tests/bench.py --server localhost:8000 --n 64 --concurrency 64
-VOXTRAL_API_KEY=secret_token python tests/idle.py --server localhost:8000
-VOXTRAL_API_KEY=secret_token python tests/convo.py --server localhost:8000
-VOXTRAL_API_KEY=secret_token python tests/remote.py --server localhost:8000
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.warmup --server localhost:8000
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.bench --server localhost:8000 --n 64 --concurrency 64
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.idle --server localhost:8000
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.convo --server localhost:8000
+VOXTRAL_API_KEY=secret_token python -m tests.e2e.remote --server localhost:8000
 ```
 
 ## Stopping and Restarting

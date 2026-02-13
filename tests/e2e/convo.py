@@ -7,10 +7,10 @@ import os
 import asyncio
 import argparse
 
-from client import ConvoClient
-from data.printing import dim, section_header
-from utils.env import apply_key_overrides, derive_default_server
-from utils import (
+from tests.client import ConvoClient
+from tests.data.printing import dim, section_header
+from tests.utils.env import apply_key_overrides, derive_default_server
+from tests.utils import (
     SAMPLES_DIR,
     find_sample_files,
     find_sample_by_name,

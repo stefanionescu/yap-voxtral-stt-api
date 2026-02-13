@@ -9,11 +9,11 @@ from contextlib import suppress
 
 import websockets
 
-from utils.messages import MessageHandler
-from utils.network import enable_tcp_nodelay
-from data.metrics import compute_stream_timeout_seconds
-from client.shared.connection import build_url, get_ws_options
-from client.shared.timing import wait_for_ready, reset_timing_metrics
+from tests.utils.messages import MessageHandler
+from tests.utils.network import enable_tcp_nodelay
+from tests.data.metrics import compute_stream_timeout_seconds
+from tests.client.shared.connection import build_url, get_ws_options
+from tests.client.shared.timing import wait_for_ready, reset_timing_metrics
 
 from .timing import record_conversation_timing
 from .segment import process_conversation_segment

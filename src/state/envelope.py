@@ -12,6 +12,7 @@ class EnvelopeState:
     request_id: str = "unknown"
     active_request_id: str | None = None
     inflight_request_id: str | None = None
+    active_request_audio_bytes: int = 0
     touch: Callable[[], None] | None = None
 
 

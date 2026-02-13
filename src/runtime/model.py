@@ -10,19 +10,16 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 
 from src.state.settings import ModelSettings
+from src.config.models import VOXTRAL_DELAY_MAX_MS, VOXTRAL_DELAY_MIN_MS, VOXTRAL_DELAY_STEP_MS
 
 logger = logging.getLogger(__name__)
 
-DELAY_MIN_MS = 80
-DELAY_MAX_MS = 2400
-DELAY_STEP_MS = 80
-
 
 def _validate_delay_ms(delay_ms: int) -> int:
-    if delay_ms < DELAY_MIN_MS or delay_ms > DELAY_MAX_MS or (delay_ms % DELAY_STEP_MS) != 0:
+    if delay_ms < VOXTRAL_DELAY_MIN_MS or delay_ms > VOXTRAL_DELAY_MAX_MS or (delay_ms % VOXTRAL_DELAY_STEP_MS) != 0:
         raise ValueError(
-            f"VOXTRAL_TRANSCRIPTION_DELAY_MS must be a multiple of {DELAY_STEP_MS} between {DELAY_MIN_MS} and"
-            f" {DELAY_MAX_MS}"
+            f"VOXTRAL_TRANSCRIPTION_DELAY_MS must be a multiple of {VOXTRAL_DELAY_STEP_MS} between"
+            f" {VOXTRAL_DELAY_MIN_MS} and {VOXTRAL_DELAY_MAX_MS}"
         )
     return delay_ms
 
@@ -34,13 +31,35 @@ def _patch_tekken_json(model_dir: Path, *, tekken_filename: str, delay_ms: int) 
         return False
 
     doc = json.loads(tekken_path.read_text(encoding="utf-8"))
-    current = doc.get("transcription_delay_ms")
-    if current == delay_ms:
-        return False
+    changed_path = None
 
-    doc["transcription_delay_ms"] = delay_ms
+    if isinstance(doc, dict) and "transcription_delay_ms" in doc:
+        current = doc.get("transcription_delay_ms")
+        if current == delay_ms:
+            return False
+        doc["transcription_delay_ms"] = delay_ms
+        changed_path = "transcription_delay_ms"
+    else:
+        audio = doc.get("audio") if isinstance(doc, dict) else None
+        if isinstance(audio, dict) and "transcription_delay_ms" in audio:
+            current = audio.get("transcription_delay_ms")
+            if current == delay_ms:
+                return False
+            audio["transcription_delay_ms"] = delay_ms
+            changed_path = "audio.transcription_delay_ms"
+        elif isinstance(doc, dict):
+            # Unknown layout; fall back to a top-level key so delay is still configurable.
+            current = doc.get("transcription_delay_ms")
+            if current == delay_ms:
+                return False
+            doc["transcription_delay_ms"] = delay_ms
+            changed_path = "transcription_delay_ms"
+        else:
+            logger.warning("voxtral: tekken json is not an object at %s (skipping delay patch)", tekken_path)
+            return False
+
     tekken_path.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    logger.info("voxtral: patched %s transcription_delay_ms=%s", tekken_path, delay_ms)
+    logger.info("voxtral: patched %s %s=%s", tekken_path, changed_path or "transcription_delay_ms", delay_ms)
     return True
 
 

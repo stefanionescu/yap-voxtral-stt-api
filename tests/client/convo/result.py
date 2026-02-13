@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from data.metrics import calculate_detailed_metrics
+from tests.data.metrics import calculate_detailed_metrics
 
 
 def calculate_segment_metrics(

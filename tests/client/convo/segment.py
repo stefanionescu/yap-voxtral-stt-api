@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import time
 
-import config
-from utils.audio import AudioStreamer
+from tests import config
+from tests.utils.audio import AudioStreamer
 
 
 async def process_conversation_segment(

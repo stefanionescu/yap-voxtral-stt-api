@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import config
-from state.convo import HandlerSnapshot
+from tests import config
+from tests.state.convo import HandlerSnapshot
 
 
 def capture_handler_state(handler) -> HandlerSnapshot:

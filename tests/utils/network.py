@@ -6,7 +6,7 @@ import socket as _sock
 from contextlib import suppress
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
-import config
+from tests import config
 
 
 def ws_url(server: str, secure: bool) -> str:
@@ -55,22 +55,6 @@ def append_auth_query(url: str, api_key: str, override: bool = False) -> str:
     return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
 
 
-def is_cloud_host(server: str) -> bool:
-    s = (server or "").strip().lower()
-    if any(m in s for m in config.CLOUD_HOST_MARKERS):
-        return True
-    if any(x in s for x in config.LOCALHOST_IDENTIFIERS):
-        return False
-    try:
-        parsed = urlparse(s if s.startswith(("http://", "https://", "ws://", "wss://")) else ("https://" + s))
-        host = parsed.netloc.split("@")[-1].split(":")[0]
-    except Exception:
-        host = s
-    if any(host.startswith(pb) for pb in config.PRIVATE_IP_BLOCKS):
-        return False
-    return "." in host
-
-
 def enable_tcp_nodelay(ws) -> None:
     """Best-effort enable TCP_NODELAY on a websockets connection transport."""
     transport = getattr(ws, "transport", None)
@@ -84,6 +68,5 @@ def enable_tcp_nodelay(ws) -> None:
 __all__ = [
     "append_auth_query",
     "enable_tcp_nodelay",
-    "is_cloud_host",
     "ws_url",
 ]

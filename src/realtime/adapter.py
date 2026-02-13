@@ -11,7 +11,7 @@ from vllm.entrypoints.openai.realtime.connection import RealtimeConnection
 
 from src.state import EnvelopeState
 
-from .envelope_ws import EnvelopeWebSocket
+from .envelope import EnvelopeWebSocket
 
 logger = logging.getLogger(__name__)
 

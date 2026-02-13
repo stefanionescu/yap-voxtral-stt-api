@@ -1,52 +1,110 @@
 #!/usr/bin/env python
-"""Detect single-file packages that should be flattened to modules.
+"""Detect folder shapes that should be flattened or removed.
 
-Flags any package under src/ that has __init__.py + exactly one other .py
-module and NO subpackages. These should be converted to a single module file.
+Policy:
+- A directory should not exist solely to wrap a *single* substantive child.
+  Examples (violations):
+  - one file (+ optional __init__.py / __pycache__)
+  - one subdirectory (+ optional __init__.py / __pycache__)
+
+Rationale:
+- This repo avoids "one-file folders" and "one-folder wrappers" because they
+  add import/path noise without providing structure.
+
+Implementation notes:
+- Operates only on git-tracked files to avoid failing due to local caches.
+- Ignores `__init__.py` when counting substantive children.
 """
 
 from __future__ import annotations
 
 import sys
+import shutil
 from pathlib import Path
+import subprocess  # noqa: S404
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
+
+CHECK_ROOTS = ("src", "tests", "linting")
+IGNORE_FILES = {"__init__.py"}
+IGNORE_DIRS = {"__pycache__"}
+MIN_PATH_PARTS = 2
 
 
-def _is_single_file_package(pkg_dir: Path) -> str | None:
-    """Return the lone module name if pkg_dir is a single-file package, else None."""
-    init = pkg_dir / "__init__.py"
-    if not init.exists():
-        return None
-
-    py_files = [f for f in pkg_dir.iterdir() if f.suffix == ".py" and f.name != "__init__.py"]
-    subdirs = [d for d in pkg_dir.iterdir() if d.is_dir() and (d / "__init__.py").exists()]
-
-    if len(py_files) == 1 and len(subdirs) == 0:
-        return py_files[0].name
-    return None
+def _git_tracked_paths() -> list[str]:
+    git_bin = shutil.which("git")
+    if not git_bin:
+        return []
+    proc = subprocess.run(  # noqa: S603
+        [git_bin, "-C", str(ROOT), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        check=True,
+        capture_output=True,
+    )
+    raw = proc.stdout.decode("utf-8", errors="replace")
+    if not raw:
+        return []
+    parts = raw.split("\0")
+    out: list[str] = []
+    for rel in parts:
+        if not rel:
+            continue
+        abs_path = ROOT / rel
+        if abs_path.is_file():
+            out.append(rel)
+    return out
 
 
 def main() -> int:
+    children_files: dict[str, set[str]] = {}
+    children_dirs: dict[str, set[str]] = {}
+
+    def add_child(parent: str, *, file_child: str | None = None, dir_child: str | None = None) -> None:
+        if file_child is not None:
+            children_files.setdefault(parent, set()).add(file_child)
+        if dir_child is not None:
+            children_dirs.setdefault(parent, set()).add(dir_child)
+
+    tracked = _git_tracked_paths()
+    for rel in tracked:
+        if not rel.startswith(tuple(f"{r}/" for r in CHECK_ROOTS)):
+            continue
+        parts = rel.split("/")
+        if len(parts) < MIN_PATH_PARTS:
+            continue
+
+        # Walk parent directories and record the next segment as a direct child.
+        for i in range(0, len(parts) - 1):
+            parent_dir = "/".join(parts[: i + 1])
+            child = parts[i + 1]
+            if child in IGNORE_DIRS:
+                continue
+            if i + 1 == len(parts) - 1:
+                add_child(parent_dir, file_child=child)
+            else:
+                add_child(parent_dir, dir_child=child)
+
     violations: list[str] = []
 
-    if not SRC_DIR.is_dir():
-        return 0
-
-    for pkg_dir in sorted(SRC_DIR.rglob("*")):
-        if not pkg_dir.is_dir():
-            continue
-        if not (pkg_dir / "__init__.py").exists():
-            continue
-        # Skip the src root itself
-        if pkg_dir == SRC_DIR:
+    for parent in sorted(set(children_files) | set(children_dirs)):
+        # Skip root folders themselves (src/, tests/, linting/)
+        if parent in CHECK_ROOTS:
             continue
 
-        lone_module = _is_single_file_package(pkg_dir)
-        if lone_module:
-            rel = pkg_dir.relative_to(ROOT)
-            violations.append(f"  {rel}/ has only {lone_module} — flatten to a single module")
+        files = {f for f in children_files.get(parent, set()) if f not in IGNORE_FILES}
+        dirs = {d for d in children_dirs.get(parent, set()) if d not in IGNORE_DIRS}
+
+        total = len(files) + len(dirs)
+        if total == 0:
+            # Only ignored children (e.g., __init__.py) remain.
+            violations.append(f"  {parent}/ has no substantive children — flatten/remove the folder")
+            continue
+        if total == 1:
+            if files:
+                only = next(iter(files))
+                violations.append(f"  {parent}/ has only {only} — flatten to {parent}.py")
+            else:
+                only = next(iter(dirs))
+                violations.append(f"  {parent}/ only wraps {only}/ — flatten/remove the wrapper folder")
 
     if violations:
         print("Single-file folder violations:", file=sys.stderr)
@@ -57,4 +115,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

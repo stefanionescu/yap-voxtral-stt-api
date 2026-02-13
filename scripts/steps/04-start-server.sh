@@ -3,15 +3,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../config/paths.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../config/server.sh"
+# shellcheck disable=SC1091
 source "${ROOT_DIR}/scripts/lib/log.sh"
 
-SERVER_BIND_HOST="${SERVER_BIND_HOST:-0.0.0.0}"
-SERVER_PORT="${SERVER_PORT:-8000}"
-
-VENV_DIR="${VENV_DIR:-${ROOT_DIR}/.venv}"
-
-pid_file="${ROOT_DIR}/server.pid"
+pid_file="${SERVER_PID_FILE}"
 
 if [[ -f ${pid_file} ]]; then
   pid="$(cat "${pid_file}" 2>/dev/null || true)"
@@ -30,7 +29,7 @@ setsid "${VENV_DIR}/bin/python" -m uvicorn src.server:app \
   --app-dir "${ROOT_DIR}" \
   --host "${SERVER_BIND_HOST}" \
   --port "${SERVER_PORT}" \
-  --workers 1 >>"${ROOT_DIR}/server.log" 2>&1 &
+  --workers 1 >>"${SERVER_LOG_FILE}" 2>&1 &
 
 pid=$!
 echo "${pid}" >"${pid_file}"

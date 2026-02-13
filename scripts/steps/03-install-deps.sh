@@ -3,14 +3,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../config/paths.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../config/deps.sh"
+# shellcheck disable=SC1091
 source "${ROOT_DIR}/scripts/lib/log.sh"
-
-VENV_DIR="${VENV_DIR:-${ROOT_DIR}/.venv}"
-REQ_FILE="${REQ_FILE:-${ROOT_DIR}/requirements.txt}"
-
-# CUDA 13 torch wheels index.
-PYTORCH_CUDA_INDEX_URL="${PYTORCH_CUDA_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
 
 log_section "[deps] Installing dependencies"
 

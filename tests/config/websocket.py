@@ -1,9 +1,11 @@
-from __future__ import annotations
-
 """WebSocket defaults for client scripts."""
 
+from __future__ import annotations
+
+from src.config.websocket import WS_ENDPOINT_PATH as _SERVER_WS_ENDPOINT_PATH
+
 # Endpoint (server path). Clients build ws(s)://host:port + this path.
-WS_ENDPOINT_PATH: str = "/api/asr-streaming"
+WS_ENDPOINT_PATH: str = _SERVER_WS_ENDPOINT_PATH
 
 # Disable protocol-level ping/pong by default; the server's idle policy is based
 # on receiving application messages (including {"type":"ping"}).

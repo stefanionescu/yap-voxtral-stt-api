@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
-VENV_DIR="${VENV_DIR:-${ROOT_DIR}/.venv}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../config/paths.sh"
 
 choose_python() {
   if command -v python3.11 >/dev/null 2>&1; then

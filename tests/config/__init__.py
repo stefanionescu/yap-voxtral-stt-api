@@ -20,9 +20,6 @@ from .defaults import MS_PER_S, DEFAULT_ZERO, DEFAULT_TIMEOUT_S
 # STT timing
 from .stt import STT_DELAY_SEC, SERVER_STEP_MS, SERVER_STEP_SEC
 
-# Network heuristics
-from .network import PRIVATE_IP_BLOCKS, CLOUD_HOST_MARKERS, LOCALHOST_IDENTIFIERS
-
 # Session and handshake
 from .session import MIN_SLEEP_S, POLL_INTERVAL_S, DONE_WAIT_TIMEOUT_S, READY_WAIT_TIMEOUT_S
 
@@ -75,7 +72,6 @@ from .protocol import (
 
 __all__ = [
     "ASR_SAMPLE_RATE",
-    "CLOUD_HOST_MARKERS",
     "COMPUTE_TIMEOUT_MAX_S",
     "COMPUTE_TIMEOUT_MIN_S",
     "COMPUTE_TIMEOUT_SAFETY_ADD_S",
@@ -94,12 +90,10 @@ __all__ = [
     "IDLE_GRACE_PERIOD_S",
     "JITTER_GROUP_SIZE",
     "JITTER_STEP_S",
-    "LOCALHOST_IDENTIFIERS",
     "MIN_SLEEP_S",
     "MS_PER_S",
     "PCM16_MAX_VALUE",
     "POLL_INTERVAL_S",
-    "PRIVATE_IP_BLOCKS",
     "PROTO_KEY_PAYLOAD",
     "PROTO_KEY_REQUEST_ID",
     "PROTO_KEY_SESSION_ID",

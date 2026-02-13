@@ -70,7 +70,10 @@ class WebSocketLifecycle:
                 await asyncio.sleep(self._watchdog_tick_s)
                 if self._stop_event.is_set():
                     break
-                if (time.monotonic() - self._connection_start) >= self._max_connection_duration_s:
+                if (
+                    self._max_connection_duration_s > 0
+                    and (time.monotonic() - self._connection_start) >= self._max_connection_duration_s
+                ):
                     logger.info("WebSocket max duration reached; closing connection")
                     self._stop_event.set()
                     with contextlib.suppress(Exception):
@@ -81,7 +84,7 @@ class WebSocketLifecycle:
                     break
                 if self._is_busy_fn():
                     continue
-                if (time.monotonic() - self._last_activity) >= self._idle_timeout_s:
+                if self._idle_timeout_s > 0 and (time.monotonic() - self._last_activity) >= self._idle_timeout_s:
                     logger.info("WebSocket idle timeout reached; closing connection")
                     self._stop_event.set()
                     with contextlib.suppress(Exception):

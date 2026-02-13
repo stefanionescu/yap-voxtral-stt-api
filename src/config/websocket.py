@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import os
 
+# Server endpoint path (kept in config so it's not duplicated across modules).
+WS_ENDPOINT_PATH: str = "/api/asr-streaming"
+
+_DISABLED_VALUES = {"0", "none", "null", "disabled", "disable", "off"}
+
 # Envelope keys (server protocol)
 WS_KEY_TYPE = "type"
 WS_KEY_SESSION_ID = "session_id"
@@ -20,14 +25,19 @@ WS_CLOSE_MAX_DURATION_CODE = 4003
 WS_CLOSE_IDLE_REASON = "idle timeout"
 WS_CLOSE_MAX_DURATION_REASON = "max connection duration reached"
 
-# Connection lifecycle
+# Connection lifecycle.
+# Set WS_IDLE_TIMEOUT_S=0 (or "none") to disable idle close.
+# Set WS_MAX_CONNECTION_DURATION_S=0 (or "none") to disable max duration close.
 _WS_IDLE_TIMEOUT_S_RAW = (os.getenv("WS_IDLE_TIMEOUT_S") or "").strip()
-try:
-    WS_IDLE_TIMEOUT_S: float = float(_WS_IDLE_TIMEOUT_S_RAW) if _WS_IDLE_TIMEOUT_S_RAW else 150.0
-except Exception:
-    WS_IDLE_TIMEOUT_S = 150.0
-if WS_IDLE_TIMEOUT_S <= 0:
-    WS_IDLE_TIMEOUT_S = 150.0
+if _WS_IDLE_TIMEOUT_S_RAW.lower() in _DISABLED_VALUES:
+    WS_IDLE_TIMEOUT_S = 0.0
+else:
+    try:
+        WS_IDLE_TIMEOUT_S = float(_WS_IDLE_TIMEOUT_S_RAW) if _WS_IDLE_TIMEOUT_S_RAW else 150.0
+    except Exception:
+        WS_IDLE_TIMEOUT_S = 150.0
+    if WS_IDLE_TIMEOUT_S < 0:
+        WS_IDLE_TIMEOUT_S = 0.0
 
 _WS_WATCHDOG_TICK_S_RAW = (os.getenv("WS_WATCHDOG_TICK_S") or "").strip()
 try:
@@ -39,14 +49,17 @@ if WS_WATCHDOG_TICK_S <= 0:
 
 # Hard max connection duration (default: 90 minutes).
 _WS_MAX_CONNECTION_DURATION_S_RAW = (os.getenv("WS_MAX_CONNECTION_DURATION_S") or "").strip()
-try:
-    WS_MAX_CONNECTION_DURATION_S: float = (
-        float(_WS_MAX_CONNECTION_DURATION_S_RAW) if _WS_MAX_CONNECTION_DURATION_S_RAW else float(90 * 60)
-    )
-except Exception:
-    WS_MAX_CONNECTION_DURATION_S = float(90 * 60)
-if WS_MAX_CONNECTION_DURATION_S <= 0:
-    WS_MAX_CONNECTION_DURATION_S = float(90 * 60)
+if _WS_MAX_CONNECTION_DURATION_S_RAW.lower() in _DISABLED_VALUES:
+    WS_MAX_CONNECTION_DURATION_S = 0.0
+else:
+    try:
+        WS_MAX_CONNECTION_DURATION_S = (
+            float(_WS_MAX_CONNECTION_DURATION_S_RAW) if _WS_MAX_CONNECTION_DURATION_S_RAW else float(90 * 60)
+        )
+    except Exception:
+        WS_MAX_CONNECTION_DURATION_S = float(90 * 60)
+    if WS_MAX_CONNECTION_DURATION_S < 0:
+        WS_MAX_CONNECTION_DURATION_S = 0.0
 
 # Inbound buffering (decouples receive from engine scheduling)
 _WS_INBOUND_QUEUE_MAX_RAW = (os.getenv("WS_INBOUND_QUEUE_MAX") or "").strip()
@@ -61,10 +74,12 @@ WS_ERROR_AUTH_FAILED = "authentication_failed"
 WS_ERROR_SERVER_AT_CAPACITY = "server_at_capacity"
 WS_ERROR_INVALID_MESSAGE = "invalid_message"
 WS_ERROR_INVALID_PAYLOAD = "invalid_payload"
+WS_ERROR_UTTERANCE_TOO_LONG = "utterance_too_long"
 WS_ERROR_RATE_LIMITED = "rate_limited"
 WS_ERROR_INTERNAL = "internal_error"
 
 __all__ = [
+    "WS_ENDPOINT_PATH",
     "WS_CLOSE_BUSY_CODE",
     "WS_CLOSE_CLIENT_REQUEST_CODE",
     "WS_CLOSE_IDLE_CODE",
@@ -82,6 +97,7 @@ __all__ = [
     "WS_ERROR_INVALID_PAYLOAD",
     "WS_ERROR_RATE_LIMITED",
     "WS_ERROR_SERVER_AT_CAPACITY",
+    "WS_ERROR_UTTERANCE_TOO_LONG",
     "WS_KEY_PAYLOAD",
     "WS_KEY_REQUEST_ID",
     "WS_KEY_SESSION_ID",

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-log_blank() { echo ""; }
-log_info() { echo "$@"; }
-log_warn() { echo "$@" >&2; }
-log_err() { echo "$@" >&2; }
+# Write all logs to stderr so stdout remains usable for structured outputs when needed.
+log_info() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+log_warn() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+log_err() { [ -z "$*" ] && echo >&2 || echo "$*" >&2; }
+
+log_blank() { echo >&2; }
 log_section() {
-  echo ""
-  echo "$@"
+  log_blank
+  log_info "$@"
 }

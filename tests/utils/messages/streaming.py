@@ -7,7 +7,7 @@ import time
 import asyncio
 import logging
 
-import config
+from tests import config
 
 logger = logging.getLogger(__name__)
 

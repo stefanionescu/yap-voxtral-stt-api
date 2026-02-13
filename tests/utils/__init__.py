@@ -9,7 +9,7 @@ Focused modules:
 
 from __future__ import annotations
 
-from data.printing import (
+from tests.data.printing import (
     print_convo_metrics,
     print_file_not_found,
     print_transcript_line,
@@ -19,7 +19,7 @@ from data.printing import (
 
 from .audio import AudioStreamer, iter_pcm16_chunks
 from .messages import MessageHandler, BenchMessageHandler
-from .network import ws_url, is_cloud_host, append_auth_query, enable_tcp_nodelay
+from .network import ws_url, append_auth_query, enable_tcp_nodelay
 from .files import (
     EXTS,
     SAMPLES_DIR,
@@ -42,7 +42,6 @@ __all__ = [
     "file_to_pcm16_mono_16k",
     "find_sample_by_name",
     "find_sample_files",
-    "is_cloud_host",
     "iter_pcm16_chunks",
     "make_silence_pcm16",
     "print_benchmark_summary",

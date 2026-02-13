@@ -11,10 +11,10 @@ import asyncio
 import logging
 import argparse
 
-import config
-from client import IdleClient
-from utils.env import apply_key_overrides, derive_default_server
-from data.printing import dim, format_fail, format_info, format_pass, format_error, section_header
+from tests import config
+from tests.client import IdleClient
+from tests.utils.env import apply_key_overrides, derive_default_server
+from tests.data.printing import dim, format_fail, format_info, format_pass, format_error, section_header
 
 logger = logging.getLogger(__name__)
 

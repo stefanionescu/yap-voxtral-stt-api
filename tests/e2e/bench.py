@@ -8,11 +8,17 @@ import time
 import asyncio
 import argparse
 
-import config
-from client import BenchmarkRunner
-from utils.env import apply_key_overrides, derive_default_server
-from data.printing import dim, red, format_error, section_header, print_benchmark_summary
-from utils import SAMPLES_DIR, find_sample_files, find_sample_by_name, print_file_not_found, file_to_pcm16_mono_16k
+from tests import config
+from tests.client import BenchmarkRunner
+from tests.utils.env import apply_key_overrides, derive_default_server
+from tests.data.printing import dim, red, format_error, section_header, print_benchmark_summary
+from tests.utils import (
+    SAMPLES_DIR,
+    find_sample_files,
+    find_sample_by_name,
+    print_file_not_found,
+    file_to_pcm16_mono_16k,
+)
 
 
 def parse_args() -> argparse.Namespace:

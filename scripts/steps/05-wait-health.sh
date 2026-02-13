@@ -3,12 +3,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../config/paths.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../config/server.sh"
+# shellcheck disable=SC1091
 source "${ROOT_DIR}/scripts/lib/log.sh"
-
-SERVER_PORT="${SERVER_PORT:-8000}"
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${SERVER_PORT}/healthz}"
-HEALTH_TIMEOUT_S="${HEALTH_TIMEOUT_S:-600}"
 
 log_info "[health] Waiting for health: ${HEALTH_URL}"
 
@@ -24,5 +24,5 @@ while ((SECONDS <= deadline)); do
 done
 
 log_err "[health] ✗ server did not become healthy within ${HEALTH_TIMEOUT_S}s"
-log_err "[health] tail -n 200 ${ROOT_DIR}/server.log"
+log_err "[health] tail -n 200 ${SERVER_LOG_FILE}"
 exit 1

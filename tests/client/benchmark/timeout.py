@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from data.metrics import compute_stream_timeout_seconds
+from tests.data.metrics import compute_stream_timeout_seconds
 
 
 def compute_stream_timeout_seconds_for(audio_seconds: float) -> float:

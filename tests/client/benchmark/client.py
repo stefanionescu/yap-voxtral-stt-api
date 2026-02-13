@@ -5,10 +5,10 @@ from __future__ import annotations
 import time
 import uuid
 
-import config
-from client.shared.base import WSClientBase
-from utils.messages import BenchMessageHandler
-from data.metrics import calculate_basic_metrics, calculate_detailed_metrics
+from tests import config
+from tests.client.shared.base import WSClientBase
+from tests.utils.messages import BenchMessageHandler
+from tests.data.metrics import calculate_basic_metrics, calculate_detailed_metrics
 
 from .timeout import compute_stream_timeout_seconds_for
 

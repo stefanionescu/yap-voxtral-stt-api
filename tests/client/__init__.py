@@ -1,13 +1,13 @@
-"""WebSocket client implementations for runnable scripts under tests/."""
+"""WebSocket client implementations for runnable scripts under tests/e2e/."""
 
 from __future__ import annotations
 
-from client.convo.client import ConvoClient
-from client.benchmark import BenchmarkRunner
-from client.remote.client import RemoteClient
-from client.warmup.client import WarmupClient
-from client.idle.client import IdleClient, IdleTestResult
-from client.benchmark.client import BenchClient, CapacityRejected
+from .remote import RemoteClient
+from .warmup import WarmupClient
+from .convo.client import ConvoClient
+from .benchmark import BenchmarkRunner
+from .idle import IdleClient, IdleTestResult
+from .benchmark.client import BenchClient, CapacityRejected
 
 __all__ = [
     "BenchClient",

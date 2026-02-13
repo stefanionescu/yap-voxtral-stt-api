@@ -12,11 +12,11 @@ import logging
 import argparse
 from pathlib import Path
 
-import config
-from client import WarmupClient
-from data.printing import dim, format_error, section_header
-from utils.env import apply_key_overrides, derive_default_server
-from utils import (
+from tests import config
+from tests.client import WarmupClient
+from tests.data.printing import dim, format_error, section_header
+from tests.utils.env import apply_key_overrides, derive_default_server
+from tests.utils import (
     SAMPLES_DIR,
     find_sample_files,
     print_file_not_found,

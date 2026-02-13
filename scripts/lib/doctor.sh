@@ -2,9 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-
-VENV_DIR="${VENV_DIR:-${ROOT_DIR}/.venv}"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../config/paths.sh"
 
 if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
   echo "[doctor] ✗ venv not found at ${VENV_DIR} (run: bash scripts/main.sh)" >&2

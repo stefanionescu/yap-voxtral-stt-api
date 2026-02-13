@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SERVER_BIND_HOST="${SERVER_BIND_HOST:-0.0.0.0}"
+SERVER_PORT="${SERVER_PORT:-8000}"
+
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${SERVER_PORT}/healthz}"
+HEALTH_TIMEOUT_S="${HEALTH_TIMEOUT_S:-600}"
+
+TAIL_LOGS="${TAIL_LOGS:-1}"
+

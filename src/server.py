@@ -12,6 +12,7 @@ with suppress(RuntimeError):
 from fastapi import FastAPI, WebSocket  # noqa: E402
 from fastapi.responses import ORJSONResponse  # noqa: E402
 
+from src.config.websocket import WS_ENDPOINT_PATH  # noqa: E402
 from src.runtime.logging import configure_logging  # noqa: E402
 from src.runtime.dependencies import build_runtime_deps  # noqa: E402
 from src.handlers.websocket.manager import handle_websocket_connection  # noqa: E402
@@ -19,8 +20,6 @@ from src.handlers.websocket.manager import handle_websocket_connection  # noqa: 
 logger = logging.getLogger(__name__)
 
 configure_logging()
-
-WS_ENDPOINT_PATH = "/api/asr-streaming"
 
 
 @asynccontextmanager

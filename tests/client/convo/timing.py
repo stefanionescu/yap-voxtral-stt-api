@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-import config
+from tests import config
 
 
 def record_conversation_timing(base, handler, session_start: float, last_signal_ts: float) -> None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from utils.audio import AudioStreamer
+from tests.utils.audio import AudioStreamer
 
 
 def create_streamer(pcm_bytes: bytes, debug: bool) -> AudioStreamer:

@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
-import config
-from utils.network import ws_url, append_auth_query
+from tests import config
+from tests.utils.network import ws_url, append_auth_query
 
 
 def build_url(server: str, secure: bool) -> str:

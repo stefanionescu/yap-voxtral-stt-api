@@ -16,13 +16,15 @@ except Exception:
 if VLLM_GPU_MEMORY_UTILIZATION <= 0.0 or VLLM_GPU_MEMORY_UTILIZATION > 1.0:
     VLLM_GPU_MEMORY_UTILIZATION = 0.92
 
-# Voxtral Realtime is ~12.5 "steps"/sec (~80ms/token). Default max connection duration is 90 minutes:
-# 90min = 5400s; 5400 / 0.08 = 67500 tokens.
+# Voxtral Realtime is ~12.5 "steps"/sec (~80ms/token).
+#
+# Default max model length targets a single long utterance of ~5 minutes:
+# 5min = 300s; 300 / 0.08 = 3750 steps; use a small buffer -> 4096.
 _MAX_MODEL_LEN_RAW = (os.getenv("VLLM_MAX_MODEL_LEN") or "").strip()
 try:
-    VLLM_MAX_MODEL_LEN: int = int(_MAX_MODEL_LEN_RAW) if _MAX_MODEL_LEN_RAW else 67500
+    VLLM_MAX_MODEL_LEN: int = int(_MAX_MODEL_LEN_RAW) if _MAX_MODEL_LEN_RAW else 4096
 except Exception:
-    VLLM_MAX_MODEL_LEN = 67500
+    VLLM_MAX_MODEL_LEN = 4096
 VLLM_MAX_MODEL_LEN = max(1, int(VLLM_MAX_MODEL_LEN))
 
 _MAX_NUM_SEQS_RAW = (os.getenv("VLLM_MAX_NUM_SEQS") or "").strip()
