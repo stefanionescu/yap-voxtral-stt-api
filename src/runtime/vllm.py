@@ -411,6 +411,11 @@ async def build_vllm_realtime(settings: AppSettings) -> tuple[Any, Any, Any, Any
     max_num_seqs = _tune_max_num_seqs(settings, model_dir)
     engine_args = _build_engine_args(settings, model_dir, max_num_seqs=max_num_seqs)
 
+    # Whisper-causal's compiled graph is not serializable; disable the compile
+    # cache via env var so the spawned EngineCore subprocess inherits it.
+    if settings.vllm.disable_compile_cache:
+        os.environ.setdefault("VLLM_DISABLE_COMPILE_CACHE", "1")
+
     logger.info("vllm: building engine (model=%s)", model_dir)
     engine_stack = contextlib.AsyncExitStack()
     engine_cm = build_async_engine_client_from_engine_args(
