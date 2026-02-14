@@ -102,7 +102,10 @@ def _select_kv_cache_dtype(settings: AppSettings) -> str:
     if _env_is_set("VLLM_KV_CACHE_DTYPE"):
         dt = (settings.vllm.kv_cache_dtype or "").strip()
     else:
-        dt = "fp8" if _gpu_supports_fp8() else "auto"
+        # Voxtral's whisper-causal encoder requires FlashAttentionBackend, which
+        # does not support fp8 KV cache in vLLM v1 (only TritonAttentionBackend
+        # does). Force "auto" to ensure FlashAttention is selected.
+        dt = "auto"
 
     # Compatibility: some docs/older configs use fp8_e4m3fn; vLLM uses fp8_e4m3.
     dt_l = dt.lower()
@@ -407,12 +410,6 @@ async def build_vllm_realtime(settings: AppSettings) -> tuple[Any, Any, Any, Any
 
     max_num_seqs = _tune_max_num_seqs(settings, model_dir)
     engine_args = _build_engine_args(settings, model_dir, max_num_seqs=max_num_seqs)
-
-    # Whisper-causal encoder only supports FlashAttentionBackend; force it so
-    # vLLM doesn't auto-select Triton or FlashInfer (which would crash).
-    if not _env_is_set("VLLM_ATTENTION_BACKEND"):
-        os.environ["VLLM_ATTENTION_BACKEND"] = "FLASH_ATTN"
-        logger.info("vllm: forcing VLLM_ATTENTION_BACKEND=FLASH_ATTN (whisper-causal requirement)")
 
     logger.info("vllm: building engine (model=%s)", model_dir)
     engine_stack = contextlib.AsyncExitStack()
