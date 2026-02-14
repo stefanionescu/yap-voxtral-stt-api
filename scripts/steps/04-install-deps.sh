@@ -12,19 +12,39 @@ source "${ROOT_DIR}/scripts/lib/log/logging.sh"
 
 log_section "[deps] Installing dependencies"
 
-# Ensure uv is available (preferred installer for CUDA 13 wheels).
+# ---------------------------------------------------------------------------
+# Helper: install a package via uv (preferred) or pip (fallback).
+# ---------------------------------------------------------------------------
+_pip_install() {
+  if command -v uv >/dev/null 2>&1; then
+    uv pip install --python "${VENV_DIR}/bin/python" "$@"
+  else
+    "${VENV_DIR}/bin/pip" install "$@"
+  fi
+}
+
+# Ensure uv is available (preferred installer for CUDA 12.8 wheels).
 if ! command -v uv >/dev/null 2>&1; then
   log_info "[deps] Installing uv"
   pip install uv 2>&1 | tail -1
 fi
 
+# ---------------------------------------------------------------------------
+# Pre-install vLLM from the GitHub release wheel (not on PyPI).
+# ---------------------------------------------------------------------------
+log_info "[deps] Installing vLLM from wheel"
+_pip_install "${VLLM_WHEEL_URL}"
+
+# ---------------------------------------------------------------------------
+# Main requirements (PyTorch + app deps).
+# ---------------------------------------------------------------------------
 if command -v uv >/dev/null 2>&1; then
   log_info "[deps] Using uv pip"
   uv pip install --python "${VENV_DIR}/bin/python" -U pip
   uv pip install --python "${VENV_DIR}/bin/python" -r "${REQ_FILE}" \
     --extra-index-url "${PYTORCH_CUDA_INDEX_URL}" \
     --index-strategy unsafe-best-match \
-    --torch-backend=cu130
+    --torch-backend="${TORCH_BACKEND}"
 else
   log_warn "[deps] uv not found; falling back to pip"
   "${VENV_DIR}/bin/python" -m pip install -U pip
@@ -43,14 +63,25 @@ if "${VENV_DIR}/bin/python" -c "import flashinfer" 2>/dev/null; then
   fi
 fi
 
-# Voxtral's whisper-causal encoder requires FlashAttentionBackend (flash-attn).
-# Installed separately because it needs --no-build-isolation to find torch at
-# build time when no pre-built wheel is available.
+# ---------------------------------------------------------------------------
+# flash-attn: try a prebuilt wheel first, fall back to source build.
+# ---------------------------------------------------------------------------
 if ! "${VENV_DIR}/bin/python" -c "import flash_attn" 2>/dev/null; then
-  log_info "[deps] Installing flash-attn (required by whisper-causal encoder)"
-  if command -v uv >/dev/null 2>&1; then
-    uv pip install --python "${VENV_DIR}/bin/python" flash-attn --no-build-isolation
+  log_info "[deps] Installing flash-attn ${FLASH_ATTN_VERSION} (required by whisper-causal encoder)"
+
+  # Detect runtime values needed to construct the prebuilt wheel filename.
+  TORCH_VER="$("${VENV_DIR}/bin/python" -c "import torch; v=torch.__version__.split('+')[0].split('.')[:2]; print('.'.join(v))")"
+  CXX11_ABI="$("${VENV_DIR}/bin/python" -c "import torch; print(int(torch._C._GLIBCXX_USE_CXX11_ABI))" 2>/dev/null || echo "TRUE")"
+  PY_TAG="cp$("${VENV_DIR}/bin/python" -c "import sys; print(f'{sys.version_info.major}{sys.version_info.minor}')")"
+
+  WHEEL_NAME="flash_attn-${FLASH_ATTN_VERSION}+cu12torch${TORCH_VER}cxx11abi${CXX11_ABI}-${PY_TAG}-${PY_TAG}-linux_x86_64.whl"
+  WHEEL_URL="https://github.com/Dao-AILab/flash-attention/releases/download/v${FLASH_ATTN_VERSION}/${WHEEL_NAME}"
+
+  log_info "[deps] Trying prebuilt wheel: ${WHEEL_NAME}"
+  if _pip_install "${WHEEL_URL}" 2>/dev/null; then
+    log_info "[deps] flash-attn installed from prebuilt wheel"
   else
-    "${VENV_DIR}/bin/pip" install flash-attn --no-build-isolation
+    log_info "[deps] Prebuilt wheel not available; building flash-attn from source"
+    MAX_JOBS="${MAX_JOBS:-4}" _pip_install "flash-attn==${FLASH_ATTN_VERSION}" --no-build-isolation
   fi
 fi

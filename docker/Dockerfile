@@ -1,26 +1,40 @@
-FROM nvidia/cuda:13.0.0-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG PYTORCH_CUDA_INDEX_URL=https://download.pytorch.org/whl/cu130
+ARG PYTORCH_CUDA_INDEX_URL=https://download.pytorch.org/whl/cu128
+ARG VLLM_WHEEL_URL=https://github.com/vllm-project/vllm/releases/download/v0.16.0/vllm-0.16.0-cp38-abi3-manylinux_2_31_x86_64.whl
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 python3.11-venv python3-pip ca-certificates git ffmpeg \
+    python3.11 python3.11-dev python3.11-venv python3-pip \
+    ca-certificates git ffmpeg ninja-build build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 
 COPY requirements.txt /workspace/requirements.txt
 
-# Install pinned runtime dependencies into the venv. CUDA 13 torch wheels are
+# Install pinned runtime dependencies into the venv. CUDA 12.8 torch wheels are
 # provided via PYTORCH_CUDA_INDEX_URL.
+# vLLM is installed separately from its GitHub release wheel before requirements.txt
+# so that the pinned version is satisfied when pip resolves the remaining deps.
 RUN python3.11 -m pip install -U pip \
     && python3.11 -m pip install "uv==0.8.3" \
     && python3.11 -m venv /workspace/.venv \
     && uv pip install --python /workspace/.venv/bin/python -U pip \
+    && uv pip install --python /workspace/.venv/bin/python "${VLLM_WHEEL_URL}" \
     && uv pip install --python /workspace/.venv/bin/python -r /workspace/requirements.txt \
         --extra-index-url "${PYTORCH_CUDA_INDEX_URL}" \
         --index-strategy unsafe-best-match \
-        --torch-backend=cu130
+        --torch-backend=cu128
+
+# Build flash-attn from source (no prebuilt wheel for torch 2.10 yet).
+# --no-build-isolation is required so the build can find the already-installed torch.
+RUN MAX_JOBS=4 uv pip install --python /workspace/.venv/bin/python \
+    flash-attn==2.8.3 --no-build-isolation
+
+# Verify flash-attn is importable.
+RUN /workspace/.venv/bin/python -c \
+    "from flash_attn import flash_attn_func; print('flash-attn OK')"
 
 COPY src /workspace/src
 

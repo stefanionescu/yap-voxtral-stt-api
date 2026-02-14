@@ -39,11 +39,11 @@ fi
 echo "[doctor] torch.version.cuda=${TORCH_CUDA}"
 
 case "${TORCH_CUDA}" in
-  13.*)
-    echo "[doctor] ✓ CUDA 13 detected"
+  12.*)
+    echo "[doctor] ✓ CUDA 12 detected"
     ;;
   *)
-    echo "[doctor] ✗ expected CUDA 13.x, got '${TORCH_CUDA}'" >&2
+    echo "[doctor] ✗ expected CUDA 12.x, got '${TORCH_CUDA}'" >&2
     exit 4
     ;;
 esac

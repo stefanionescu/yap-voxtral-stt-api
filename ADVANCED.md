@@ -62,7 +62,7 @@ Notes:
 
 ## vLLM Installation Notes
 
-This repo installs a pinned CUDA 13 stack via `scripts/main.sh`:
+This repo installs a pinned CUDA 12.8 stack via `scripts/main.sh`:
 
 ```bash
 bash scripts/main.sh
@@ -70,8 +70,8 @@ bash scripts/main.sh
 
 Key points:
 - Dependencies are pinned in `requirements.txt`.
-- The launcher prefers `uv pip` and installs CUDA 13-compatible wheels (`--torch-backend=cu130`).
-- The PyTorch CUDA wheel index used by the launcher is `https://download.pytorch.org/whl/cu130` (`PYTORCH_CUDA_INDEX_URL`).
+- The launcher prefers `uv pip` and installs CUDA 12.8-compatible wheels (`--torch-backend=cu128`).
+- The PyTorch CUDA wheel index used by the launcher is `https://download.pytorch.org/whl/cu128` (`PYTORCH_CUDA_INDEX_URL`).
 
 Validation:
 
@@ -79,7 +79,7 @@ Validation:
 bash scripts/lib/doctor.sh
 ```
 
-`scripts/lib/doctor.sh` fails unless `torch.version.cuda` is `13.x`.
+`scripts/lib/doctor.sh` fails unless `torch.version.cuda` is `12.x`.
 
 ## vLLM Configuration
 
@@ -122,7 +122,7 @@ This repo uses shell scripts to keep deployments repeatable.
   - `01-require-env.sh` (validates required env vars)
   - `02-check-gpu.sh` (hard-fails unless GPU is on the allowlist)
   - `03-venv.sh` (creates `.venv/` if missing)
-  - `04-install-deps.sh` (installs pinned deps; CUDA 13 torch backend)
+  - `04-install-deps.sh` (installs pinned deps; CUDA 12.8 torch backend)
   - `05-start-server.sh` (starts uvicorn detached; writes `server.pid`)
   - `06-wait-health.sh` (polls `/healthz`)
   - `07-tail-logs.sh` (tails `server.log` unless `TAIL_LOGS=0`)
@@ -355,8 +355,8 @@ VOXTRAL_API_KEY=secret_token python -m tests.e2e.remote --server localhost:8000
 ### vLLM Install Fails
 
 - Confirm you are using `uv` on a GPU host.
-- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/steps/04-install-deps.sh`).
-- Run `bash scripts/lib/doctor.sh` to confirm `torch.version.cuda` is `13.x`.
+- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu128` (see `scripts/steps/04-install-deps.sh`).
+- Run `bash scripts/lib/doctor.sh` to confirm `torch.version.cuda` is `12.x`.
 
 ### Model Download Is Slow or Fails
 

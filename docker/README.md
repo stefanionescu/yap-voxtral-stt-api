@@ -4,7 +4,7 @@ This repository includes Docker scaffolding for running the server in a containe
 It does not publish prebuilt images.
 
 The image runs:
-- CUDA 13 runtime base (`nvidia/cuda:13.0.0-runtime-ubuntu22.04`)
+- CUDA 12.8 devel base (`nvidia/cuda:12.8.0-devel-ubuntu22.04`)
 - Python 3.11
 - Pinned Python deps from `requirements.txt`
 

@@ -41,7 +41,7 @@ test/benchmark clients.
 
 For running the server:
 - Linux NVIDIA GPU host (L40S recommended) with a working CUDA driver stack.
-- CUDA 13 runtime for the Python stack (the launcher installs cu130 wheels).
+- CUDA 12.8 runtime for the Python stack (the launcher installs cu128 wheels).
 - Python 3.11 recommended (the scripts will use `python3.11` if available).
 - `uv` recommended (used for GPU-friendly installs and PyTorch wheel selection).
 
