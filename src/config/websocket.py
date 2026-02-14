@@ -78,7 +78,6 @@ WS_ERROR_AUTH_FAILED = "authentication_failed"
 WS_ERROR_SERVER_AT_CAPACITY = "server_at_capacity"
 WS_ERROR_INVALID_MESSAGE = "invalid_message"
 WS_ERROR_INVALID_PAYLOAD = "invalid_payload"
-WS_ERROR_RATE_LIMITED = "rate_limited"
 WS_ERROR_INTERNAL = "internal_error"
 
 __all__ = [
@@ -100,7 +99,6 @@ __all__ = [
     "WS_ERROR_INTERNAL",
     "WS_ERROR_INVALID_MESSAGE",
     "WS_ERROR_INVALID_PAYLOAD",
-    "WS_ERROR_RATE_LIMITED",
     "WS_ERROR_SERVER_AT_CAPACITY",
     "WS_KEY_PAYLOAD",
     "WS_KEY_REQUEST_ID",

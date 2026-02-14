@@ -1,17 +1,9 @@
 """Configuration module exports (env-resolved constants only)."""
 
 from .limits import (
-    WS_CANCEL_WINDOW_SECONDS,
-    WS_MAX_CANCELS_PER_WINDOW,
-    WS_MESSAGE_WINDOW_SECONDS,
     MAX_CONCURRENT_CONNECTIONS,
-    WS_MAX_MESSAGES_PER_WINDOW,
 )
 
 __all__ = [
     "MAX_CONCURRENT_CONNECTIONS",
-    "WS_CANCEL_WINDOW_SECONDS",
-    "WS_MAX_CANCELS_PER_WINDOW",
-    "WS_MAX_MESSAGES_PER_WINDOW",
-    "WS_MESSAGE_WINDOW_SECONDS",
 ]

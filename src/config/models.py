@@ -35,7 +35,7 @@ if (
 _MODEL_DIR_RAW = (os.getenv("VOXTRAL_MODEL_DIR") or "").strip()
 VOXTRAL_MODEL_DIR: Path = Path(_MODEL_DIR_RAW).expanduser() if _MODEL_DIR_RAW else (Path("models") / "voxtral")
 
-VOXTRAL_TEKKEN_FILENAME: str = (os.getenv("VOXTRAL_TEKKEN_FILENAME") or "").strip() or "tekken.json"
+VOXTRAL_TEKKEN_FILENAME: str = "tekken.json"
 
 __all__ = [
     "VOXTRAL_DELAY_MAX_MS",

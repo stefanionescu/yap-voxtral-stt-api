@@ -29,11 +29,7 @@ from src.config.models import (
     VOXTRAL_TRANSCRIPTION_DELAY_MS,
 )
 from src.config.limits import (
-    WS_CANCEL_WINDOW_SECONDS,
-    WS_MAX_CANCELS_PER_WINDOW,
-    WS_MESSAGE_WINDOW_SECONDS,
     MAX_CONCURRENT_CONNECTIONS,
-    WS_MAX_MESSAGES_PER_WINDOW,
 )
 from src.config.vllm import (
     VLLM_DTYPE,
@@ -57,10 +53,6 @@ def load_settings() -> AppSettings:
         auth=AuthSettings(api_key=VOXTRAL_API_KEY),
         limits=LimitsSettings(
             max_concurrent_connections=MAX_CONCURRENT_CONNECTIONS,
-            ws_message_window_seconds=WS_MESSAGE_WINDOW_SECONDS,
-            ws_max_messages_per_window=WS_MAX_MESSAGES_PER_WINDOW,
-            ws_cancel_window_seconds=WS_CANCEL_WINDOW_SECONDS,
-            ws_max_cancels_per_window=WS_MAX_CANCELS_PER_WINDOW,
         ),
         websocket=WebSocketSettings(
             idle_timeout_s=WS_IDLE_TIMEOUT_S,

@@ -9,7 +9,6 @@ from fastapi import WebSocket
 
 from src.state import EnvelopeState
 from src.runtime.dependencies import RuntimeDeps
-from src.handlers.limits import SlidingWindowRateLimiter
 from src.config.websocket import (
     WS_CLOSE_BUSY_CODE,
     WS_ERROR_AUTH_FAILED,
@@ -23,18 +22,6 @@ from .lifecycle import WebSocketLifecycle
 from .message_loop import run_message_loop
 
 logger = logging.getLogger(__name__)
-
-
-def _create_rate_limiters(runtime_deps: RuntimeDeps) -> tuple[SlidingWindowRateLimiter, SlidingWindowRateLimiter]:
-    message_limiter = SlidingWindowRateLimiter(
-        limit=runtime_deps.settings.limits.ws_max_messages_per_window,
-        window_seconds=runtime_deps.settings.limits.ws_message_window_seconds,
-    )
-    cancel_limiter = SlidingWindowRateLimiter(
-        limit=runtime_deps.settings.limits.ws_max_cancels_per_window,
-        window_seconds=runtime_deps.settings.limits.ws_cancel_window_seconds,
-    )
-    return message_limiter, cancel_limiter
 
 
 async def _prepare_connection(ws: WebSocket, runtime_deps: RuntimeDeps) -> bool:
@@ -89,10 +76,8 @@ async def handle_websocket_connection(ws: WebSocket, runtime_deps: RuntimeDeps) 
         state.touch = lifecycle.touch
         lifecycle.start()
 
-        message_limiter, cancel_limiter = _create_rate_limiters(runtime_deps)
-
         logger.info("WebSocket connection accepted. Active: %s", runtime_deps.connections.get_connection_count())
-        session_id = await run_message_loop(ws, lifecycle, message_limiter, cancel_limiter, runtime_deps, state=state)
+        session_id = await run_message_loop(ws, lifecycle, runtime_deps, state=state)
     finally:
         if lifecycle is not None:
             with contextlib.suppress(Exception):

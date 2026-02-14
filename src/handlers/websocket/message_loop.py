@@ -10,7 +10,6 @@ from typing import Any, Literal
 from fastapi import WebSocket, WebSocketDisconnect
 
 from src.runtime.dependencies import RuntimeDeps
-from src.handlers.limits import SlidingWindowRateLimiter
 from src.realtime import EnvelopeState, RealtimeConnectionAdapter
 from src.config.websocket import (
     WS_ERROR_INTERNAL,
@@ -23,7 +22,6 @@ from .dispatch import HANDLERS
 from .parser import parse_client_message
 from .lifecycle import WebSocketLifecycle
 from .errors import send_error, safe_send_envelope
-from .limits import consume_limiter, select_rate_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -122,8 +120,6 @@ async def _inbound_processor_loop(
 async def _receive_and_enqueue(
     ws: WebSocket,
     lifecycle: WebSocketLifecycle,
-    message_limiter: SlidingWindowRateLimiter,
-    cancel_limiter: SlidingWindowRateLimiter,
     runtime_deps: RuntimeDeps,
     *,
     state: EnvelopeState,
@@ -153,18 +149,6 @@ async def _receive_and_enqueue(
         state.session_id = session_id
         state.request_id = request_id
 
-        limiter, label = select_rate_limiter(msg_type, message_limiter, cancel_limiter)
-        if limiter is not None:
-            ok = await consume_limiter(
-                ws,
-                limiter,
-                label,
-                session_id=session_id,
-                request_id=request_id,
-            )
-            if not ok:
-                continue
-
         control = await _handle_control_message(ws, msg_type, session_id=session_id, request_id=request_id)
         if control == "close":
             return session_id
@@ -191,8 +175,6 @@ async def _receive_and_enqueue(
 async def run_message_loop(
     ws: WebSocket,
     lifecycle: WebSocketLifecycle,
-    message_limiter: SlidingWindowRateLimiter,
-    cancel_limiter: SlidingWindowRateLimiter,
     runtime_deps: RuntimeDeps,
     *,
     state: EnvelopeState,
@@ -208,8 +190,6 @@ async def run_message_loop(
         return await _receive_and_enqueue(
             ws,
             lifecycle,
-            message_limiter,
-            cancel_limiter,
             runtime_deps,
             state=state,
             inbound_q=inbound_q,

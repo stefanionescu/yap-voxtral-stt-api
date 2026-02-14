@@ -8,7 +8,7 @@ Streaming speech-to-text (STT) server for **Mistral Voxtral Realtime** using **v
 - JSON envelope: `{type, session_id, request_id, payload}`
 - vLLM Realtime semantics for inputs (`session.update`, `input_audio_buffer.*`)
 - YAP-like streaming outputs (`token`, `final`, `done`, `error`, `status`)
-- API key auth, connection cap, idle timeout, hard max duration, rate limits
+- API key auth, connection cap, idle timeout, hard max duration
 - Test clients + benchmarks (warmup, bench, idle, convo, remote)
 
 This repo uses pinned dependencies, scripts for lifecycle management, and deterministic
@@ -58,7 +58,7 @@ export VOXTRAL_API_KEY="secret_token"       # required for every websocket conne
 export HF_TOKEN="hf_your_token"             # recommended for model downloads
 ```
 
-See `.env.example` for the full list of supported environment variables.
+See `.env.example` for the minimal set of environment variables. See `ADVANCED.md` for the full env-var reference.
 
 Optional but recommended knobs:
 

@@ -15,10 +15,6 @@ class AuthSettings:
 @dataclass(frozen=True, slots=True)
 class LimitsSettings:
     max_concurrent_connections: int
-    ws_message_window_seconds: float
-    ws_max_messages_per_window: int
-    ws_cancel_window_seconds: float
-    ws_max_cancels_per_window: int
 
 
 @dataclass(frozen=True, slots=True)

@@ -4,7 +4,7 @@ This guide covers advanced operations and deep-dive details for serving **Mistra
 via **vLLM Realtime** behind a JSON WebSocket envelope.
 
 See the main [README](README.md) for quickstart and basic usage.
-See `.env.example` for a complete list of supported environment variables.
+See `.env.example` for the minimal set of environment variables.
 
 ## Contents
 
@@ -19,6 +19,7 @@ See `.env.example` for a complete list of supported environment variables.
 - [Connection Management](#connection-management)
 - [Capacity and Latency Notes](#capacity-and-latency-notes)
 - [Test Clients](#test-clients)
+- [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 
 ## Authentication Coverage
@@ -240,27 +241,11 @@ The server also emits:
 - `session_end` (in response to `end`)
 - `cancelled` (in response to `cancel`)
 
-### Cancellation and “Barge-in”
+### Cancellation and "Barge-in"
 
 - `type:"cancel"` cancels any in-flight transcription and drains queued audio.
 - Starting a new utterance (`commit final=false`) while another request is active on the same socket
   cancels the previous request automatically.
-
-### Rate Limits
-
-Rate limits are rolling-window counters per connection:
-
-| Variable | Default | Applies To |
-|---------|---------|------------|
-| `WS_MAX_MESSAGES_PER_WINDOW` / `WS_MESSAGE_WINDOW_SECONDS` | `5000 / 60` | all message types except `ping/pong/end` |
-| `WS_MAX_CANCELS_PER_WINDOW` / `WS_CANCEL_WINDOW_SECONDS` | `50 / 60` | `type:"cancel"` |
-
-Important:
-- STT streaming can easily exceed the default message limit depending on your chunk size.
-- For 80ms audio chunks, you send ~750 `append` messages per minute.
-- If you use 20ms chunks, it is ~3000 messages per minute.
-
-If you stream audio, tune `WS_MAX_MESSAGES_PER_WINDOW` accordingly or you will be rate-limited.
 
 ### Error Payload Schema
 
@@ -272,9 +257,9 @@ All server-side errors are returned as:
   "session_id": "s1",
   "request_id": "utt-1",
   "payload": {
-    "code": "rate_limited",
-    "message": "message rate limit: ...",
-    "details": { "reason_code": "message_rate_limited" }
+    "code": "invalid_message",
+    "message": "failed to parse JSON",
+    "details": { "reason_code": "invalid_message" }
   }
 }
 ```
@@ -350,6 +335,76 @@ Remote client:
 VOXTRAL_API_KEY=secret_token python -m tests.e2e.remote --server localhost:8000
 ```
 
+## Environment Variables
+
+Every environment variable the server reads, with default values. All are optional unless noted.
+
+### Secrets
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VOXTRAL_API_KEY` | *(none)* | **Required.** API key for WebSocket authentication. |
+| `HF_TOKEN` | *(none)* | Hugging Face token for model downloads (recommended). |
+
+### Server
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_BIND_HOST` | `0.0.0.0` | Host the HTTP server binds to. |
+| `SERVER_PORT` | `8000` | Port the HTTP server listens on. |
+| `LOG_LEVEL` | `INFO` | Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
+
+### Model
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VOXTRAL_MODEL_ID` | `mistralai/Voxtral-Mini-4B-Realtime-2602` | Hugging Face model repo ID. |
+| `VOXTRAL_SERVED_MODEL_NAME` | *(same as `VOXTRAL_MODEL_ID`)* | Model name exposed in the realtime protocol. |
+| `VOXTRAL_TRANSCRIPTION_DELAY_MS` | `400` | Intentional transcription delay (multiple of 80, range 80..2400). |
+| `VOXTRAL_MODEL_DIR` | `models/voxtral` | Writable local snapshot directory for the model. |
+
+### Connection Lifecycle
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_CONCURRENT_CONNECTIONS` | `0` (auto) | Max concurrent WebSocket connections. `0` = auto from tuned `max_num_seqs`. |
+| `WS_IDLE_TIMEOUT_S` | `150` | Idle close timeout in seconds. `0` to disable. |
+| `WS_WATCHDOG_TICK_S` | `5` | Watchdog tick interval in seconds. |
+| `WS_MAX_CONNECTION_DURATION_S` | `5400` | Hard max connection duration in seconds (90 min). `0` to disable. |
+| `WS_INBOUND_QUEUE_MAX` | `256` | Per-connection inbound message queue size. |
+| `WS_CLOSE_UNAUTHORIZED_CODE` | `1008` | WebSocket close code for auth failure. |
+| `WS_CLOSE_BUSY_CODE` | `1013` | WebSocket close code for server at capacity. |
+| `WS_CLOSE_IDLE_REASON` | `idle_timeout` | Close reason string for idle timeout. |
+
+### vLLM Engine
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VLLM_DTYPE` | `bfloat16` | Model dtype for vLLM. |
+| `VLLM_GPU_MEMORY_UTILIZATION` | `0.92` | Fraction of GPU memory for KV cache. Higher = more capacity, higher OOM risk. |
+| `VLLM_MAX_MODEL_LEN` | `1024` | Per-segment context limit. Smaller = more concurrency. |
+| `VLLM_MAX_NUM_SEQS` | `128` | Max concurrent sequences. Unset to enable auto-tuning. |
+| `VLLM_ENFORCE_EAGER` | `false` | Disable CUDA graphs (`true` = safer but slower). |
+| `VLLM_KV_CACHE_DTYPE` | `auto` | KV cache dtype. Auto-selects `fp8` on capable GPUs. |
+| `VLLM_CALCULATE_KV_SCALES` | `false` | Enable dynamic KV scale calculation (auto-enabled with FP8 KV). |
+| `VLLM_COMPILATION_CONFIG` | `{"cudagraph_mode":"PIECEWISE"}` | JSON dict for vLLM compilation config. `null` to disable. |
+| `VLLM_DISABLE_COMPILE_CACHE` | `true` | Disable the vLLM compile cache. |
+
+### Streaming
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `STT_INTERNAL_ROLL` | `true` | Enable internal segment rolling for long-running streams. |
+| `STT_SEGMENT_SECONDS` | `60` | Target segment length in seconds before rolling. |
+| `STT_SEGMENT_OVERLAP_SECONDS` | `0.8` | Audio overlap between rolled segments in seconds. |
+| `STT_MAX_BACKLOG_SECONDS` | `5` | Max unprocessed audio backlog before dropping oldest. |
+
+### Launcher / Install
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PYTORCH_CUDA_INDEX_URL` | `https://download.pytorch.org/whl/cu128` | PyTorch CUDA wheel index URL. |
+
 ## Troubleshooting
 
 ### vLLM Install Fails
@@ -367,13 +422,6 @@ VOXTRAL_API_KEY=secret_token python -m tests.e2e.remote --server localhost:8000
 
 - If you stream silence, you will usually get only the final.
 - Remember the model runs with a configured `transcription_delay_ms` which can delay partial output.
-
-### Rate Limited While Streaming
-
-- Increase `WS_MAX_MESSAGES_PER_WINDOW` to match your chunk size.
-- For 80ms chunks, use a value >= 800 per minute (plus headroom).
-- For 20ms chunks, use a value >= 3200 per minute.
-- For 10ms chunks, use a value >= 6500 per minute.
 
 ### Inbound Queue Full
 
