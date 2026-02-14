@@ -31,7 +31,8 @@ RUN python3.11 -m pip install -U pip \
 
 # Build flash-attn from source (no prebuilt wheel for torch 2.10 yet).
 # --no-build-isolation is required so the build can find the already-installed torch.
-RUN MAX_JOBS=4 uv pip install --python /workspace/.venv/bin/python \
+RUN uv pip install --python /workspace/.venv/bin/python wheel \
+    && MAX_JOBS=4 uv pip install --python /workspace/.venv/bin/python \
     flash-attn==2.8.3 --no-build-isolation
 
 # Verify flash-attn is importable.

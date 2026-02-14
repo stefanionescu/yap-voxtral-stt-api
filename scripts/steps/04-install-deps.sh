@@ -82,6 +82,7 @@ if ! "${VENV_DIR}/bin/python" -c "import flash_attn" 2>/dev/null; then
     log_info "[deps] flash-attn installed from prebuilt wheel"
   else
     log_info "[deps] Prebuilt wheel not available; building flash-attn from source"
+    _pip_install wheel
     MAX_JOBS="${MAX_JOBS:-4}" _pip_install "flash-attn==${FLASH_ATTN_VERSION}" --no-build-isolation
   fi
 fi
