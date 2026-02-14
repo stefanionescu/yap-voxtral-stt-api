@@ -41,21 +41,6 @@ def _env_is_set(name: str) -> bool:
     return bool((os.getenv(name) or "").strip())
 
 
-def _detect_cuda_capability() -> tuple[int, int] | None:
-    try:
-        import torch  # type: ignore
-
-        if not torch.cuda.is_available():
-            return None
-        cap = torch.cuda.get_device_capability(0)
-        if not isinstance(cap, tuple) or len(cap) != 2:
-            return None
-        major, minor = cap
-        return int(major), int(minor)
-    except Exception:
-        return None
-
-
 def _detect_gpu_name() -> str | None:
     # Prefer torch when available (matches the actual device vLLM will run on).
     try:
@@ -89,18 +74,18 @@ def _detect_gpu_name() -> str | None:
     return lines[0]
 
 
-def _gpu_supports_fp8() -> bool:
-    # vLLM considers FP8-capable CUDA GPUs to be compute capability >= 8.9 (Ada/Hopper+).
-    cap = _detect_cuda_capability()
-    if cap is None:
-        return False
-    major, minor = cap
-    return (major, minor) >= (8, 9)
-
-
 def _select_kv_cache_dtype(settings: AppSettings) -> str:
     if _env_is_set("VLLM_KV_CACHE_DTYPE"):
         dt = (settings.vllm.kv_cache_dtype or "").strip()
+        if dt.lower().startswith("fp8"):
+            logger.warning(
+                "VLLM_KV_CACHE_DTYPE=%s is incompatible with Voxtral. "
+                "Voxtral's whisper-causal encoder requires FlashAttentionBackend, "
+                "which does not support fp8 KV cache (only TritonAttentionBackend does). "
+                "Forcing kv_cache_dtype='auto' (resolves to bf16).",
+                dt,
+            )
+            dt = "auto"
     else:
         # Voxtral's whisper-causal encoder requires FlashAttentionBackend, which
         # does not support fp8 KV cache in vLLM v1 (only TritonAttentionBackend

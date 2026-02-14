@@ -110,9 +110,9 @@ vLLM knobs are env-driven and loaded at server startup (`src/runtime/settings.py
 | `VLLM_MAX_MODEL_LEN` | `1024` | Per-internal-segment context limit (audio+text tokens). Smaller = more concurrency. |
 | `VLLM_MAX_NUM_SEQS` | `128` | Upper bound on concurrent sequences. Unset to enable auto-tuning. |
 | `VLLM_ENFORCE_EAGER` | `false` | Disable CUDA graphs. Safer but usually slower. |
-| `VLLM_KV_CACHE_DTYPE` | `auto` | Auto-selects `fp8` on FP8-capable GPUs (Ada/Hopper, compute capability >= 8.9). |
-| `VLLM_CALCULATE_KV_SCALES` | `false` | Auto-enabled when FP8 KV is selected. Override via env. |
-| `VLLM_DTYPE` | `bfloat16` | Model dtype for vLLM. |
+| `VLLM_KV_CACHE_DTYPE` | `auto` | Resolves to model dtype (bf16 for Voxtral). FP8 incompatible with Voxtral's FlashAttention requirement. |
+| `VLLM_CALCULATE_KV_SCALES` | `false` | Auto-enabled when `kv_cache_dtype` starts with `fp8`. Not applicable for Voxtral. |
+| `VLLM_DTYPE` | `auto` | Model dtype for vLLM. Resolves to the model's native dtype (bf16 for Voxtral). |
 | `VLLM_COMPILATION_CONFIG` | `{"cudagraph_mode":"PIECEWISE"}` | JSON dict for vLLM compilation config. Set to `null` to disable. |
 | `VLLM_DISABLE_COMPILE_CACHE` | `true` | Disable the vLLM compile cache. |
 
@@ -441,7 +441,7 @@ Two latency components matter for real-time transcription:
 ### Practical Tuning Levers
 
 - **Keep sessions short and finalize quickly.** Each active utterance holds KV cache.
-- **FP8 KV cache** halves KV memory on supported GPUs (Ada/Hopper+), roughly doubling concurrency. Enabled automatically when the GPU supports it.
+- **KV cache dtype** defaults to `auto`, which resolves to bf16 for Voxtral. FP8 KV cache is incompatible with Voxtral because its whisper-causal encoder requires FlashAttentionBackend (fp8 KV requires TritonAttentionBackend).
 - **Lower `VLLM_MAX_MODEL_LEN`** reduces per-sequence KV cost (the server rolls segments internally to compensate).
 - **`max_num_batched_tokens`** controls the throughput/tail-latency tradeoff. Edit `src/runtime/gpu_profiles.py` to change it (intentionally not env-configurable).
 
@@ -601,13 +601,13 @@ export HF_TOKEN="hf_..."  # Hugging Face token for model downloads (avoids rate 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VLLM_DTYPE` | `bfloat16` | Model dtype |
+| `VLLM_DTYPE` | `auto` | Model dtype (resolves to model's native dtype, bf16 for Voxtral) |
 | `VLLM_GPU_MEMORY_UTILIZATION` | `0.92` | Fraction of GPU memory for KV cache |
 | `VLLM_MAX_MODEL_LEN` | `1024` | Per-segment context limit (audio+text tokens) |
 | `VLLM_MAX_NUM_SEQS` | `128` | Max concurrent sequences. Unset to enable auto-tuning |
 | `VLLM_ENFORCE_EAGER` | `false` | Disable CUDA graphs |
-| `VLLM_KV_CACHE_DTYPE` | `auto` | KV cache dtype. Auto-selects `fp8` on capable GPUs |
-| `VLLM_CALCULATE_KV_SCALES` | `false` | Dynamic KV scale calculation (auto-enabled with FP8 KV) |
+| `VLLM_KV_CACHE_DTYPE` | `auto` | KV cache dtype. `auto` resolves to model dtype (bf16). FP8 incompatible with Voxtral |
+| `VLLM_CALCULATE_KV_SCALES` | `false` | Dynamic KV scale calculation. Auto-enabled when `kv_cache_dtype` starts with `fp8` |
 | `VLLM_COMPILATION_CONFIG` | `{"cudagraph_mode":"PIECEWISE"}` | JSON dict for compilation config. `null` to disable |
 | `VLLM_DISABLE_COMPILE_CACHE` | `true` | Disable the vLLM compile cache |
 
@@ -696,7 +696,7 @@ These are hardcoded in `src/config/vllm.py` and `src/runtime/gpu_profiles.py`:
 1. Lower `VLLM_GPU_MEMORY_UTILIZATION` slightly (e.g. `0.88`) if seeing intermittent OOM.
 2. Lower `VLLM_MAX_NUM_SEQS` to reduce peak concurrency.
 3. Lower `VLLM_MAX_MODEL_LEN` (e.g. `512`) to reduce per-sequence KV cost. The server compensates with more frequent segment rolls.
-4. Enable FP8 KV cache if not already active (`VLLM_KV_CACHE_DTYPE=fp8`).
+4. Lower `MAX_CONCURRENT_CONNECTIONS` to limit peak concurrency. Note: FP8 KV cache is **not** compatible with Voxtral (requires FlashAttentionBackend).
 
 ### Connection Rejected (at Capacity)
 

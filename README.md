@@ -22,7 +22,7 @@ Production-ready streaming speech-to-text server built on **Mistral Voxtral Real
 - **Automatic barge-in** — starting a new utterance cancels the previous one without reconnecting.
 - **Connection lifecycle enforcement** — idle timeout, max duration, and a capacity guard prevent resource leaks.
 - **Configurable transcription delay** — tune the model-inherent lookahead (`80ms`..`2400ms`) to trade latency for accuracy.
-- **GPU-aware auto-tuning** — `max_num_seqs` and `max_num_batched_tokens` are selected per-GPU at startup. FP8 KV cache is enabled automatically on capable hardware.
+- **GPU-aware auto-tuning** — `max_num_seqs` and `max_num_batched_tokens` are selected per-GPU at startup.
 - **Benchmark harness** — concurrency sweeps with p50/p95 summaries out of the box.
 
 ## Prerequisites

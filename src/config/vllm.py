@@ -6,7 +6,7 @@ import os
 import json
 from typing import Any
 
-VLLM_DTYPE: str = (os.getenv("VLLM_DTYPE") or "").strip() or "bfloat16"
+VLLM_DTYPE: str = (os.getenv("VLLM_DTYPE") or "").strip() or "auto"
 
 _GPU_UTIL_RAW = (os.getenv("VLLM_GPU_MEMORY_UTILIZATION") or "").strip()
 try:
@@ -44,7 +44,9 @@ VLLM_MAX_NUM_BATCHED_TOKENS: int = 2048
 _ENFORCE_EAGER_RAW = (os.getenv("VLLM_ENFORCE_EAGER") or "").strip().lower()
 VLLM_ENFORCE_EAGER: bool = _ENFORCE_EAGER_RAW in {"1", "true", "yes", "y", "on"} if _ENFORCE_EAGER_RAW else False
 
-# KV cache dtype: "auto", "fp8_e4m3fn", "fp8_e5m2", etc. (vLLM-dependent).
+# KV cache dtype: "auto" resolves to model dtype (bf16 for Voxtral).
+# FP8 KV cache is incompatible with Voxtral (requires FlashAttentionBackend,
+# which does not support fp8 in vLLM v1).
 VLLM_KV_CACHE_DTYPE: str = (os.getenv("VLLM_KV_CACHE_DTYPE") or "").strip() or "auto"
 
 # Voxtral requires Mistral-specific loading flags for vLLM:
