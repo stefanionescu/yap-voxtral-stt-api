@@ -30,3 +30,15 @@ else
   "${VENV_DIR}/bin/python" -m pip install -U pip
   "${VENV_DIR}/bin/python" -m pip install -r "${REQ_FILE}" --extra-index-url "${PYTORCH_CUDA_INDEX_URL}"
 fi
+
+# FlashInfer is pre-installed on some cloud images but Voxtral's whisper-causal
+# encoder does not support it. vLLM v1 auto-selects FlashInfer when present,
+# so remove it to fall back to flash-attn.
+if "${VENV_DIR}/bin/python" -c "import flashinfer" 2>/dev/null; then
+  log_info "[deps] Removing flashinfer (unsupported by whisper-causal encoder)"
+  if command -v uv >/dev/null 2>&1; then
+    uv pip uninstall --python "${VENV_DIR}/bin/python" flashinfer flashinfer-python 2>/dev/null || true
+  else
+    "${VENV_DIR}/bin/pip" uninstall -y flashinfer flashinfer-python 2>/dev/null || true
+  fi
+fi

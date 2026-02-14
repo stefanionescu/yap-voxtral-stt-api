@@ -9,8 +9,3 @@ HEALTH_TIMEOUT_S="${HEALTH_TIMEOUT_S:-600}"
 
 TAIL_LOGS="${TAIL_LOGS:-1}"
 
-# vLLM attention backend. Voxtral's whisper-causal encoder requires FLASH_ATTN;
-# FlashInfer is auto-selected when installed but is not yet supported by the
-# whisper attention layer.
-export VLLM_ATTENTION_BACKEND="${VLLM_ATTENTION_BACKEND:-FLASH_ATTN}"
-
