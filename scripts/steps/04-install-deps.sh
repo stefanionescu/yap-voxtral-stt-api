@@ -12,6 +12,12 @@ source "${ROOT_DIR}/scripts/lib/log/logging.sh"
 
 log_section "[deps] Installing dependencies"
 
+# Ensure uv is available (preferred installer for CUDA 13 wheels).
+if ! command -v uv >/dev/null 2>&1; then
+  log_info "[deps] Installing uv"
+  pip install uv 2>&1 | tail -1
+fi
+
 if command -v uv >/dev/null 2>&1; then
   log_info "[deps] Using uv pip"
   uv pip install --python "${VENV_DIR}/bin/python" -U pip
