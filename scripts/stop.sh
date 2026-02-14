@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/config/paths.sh"
 # shellcheck disable=SC1091
-source "${ROOT_DIR}/scripts/lib/log.sh"
+source "${ROOT_DIR}/scripts/lib/log/logging.sh"
 
 NUKE_FLAG=0
 for arg in "$@"; do
@@ -30,10 +30,10 @@ if [[ ${NUKE_FLAG} == "1" && ${NUKE:-0} != "1" ]]; then
 fi
 
 main() {
-  bash "${ROOT_DIR}/scripts/lib/stop-pids.sh"
+  bash "${ROOT_DIR}/scripts/lib/stop/pids.sh"
 
   if [[ ${NUKE_FLAG} == "1" ]]; then
-    bash "${ROOT_DIR}/scripts/lib/stop-nuke.sh"
+    bash "${ROOT_DIR}/scripts/lib/stop/nuke.sh"
   fi
 
   log_info "[stop] Done"

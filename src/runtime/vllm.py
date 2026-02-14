@@ -22,6 +22,7 @@ from vllm.entrypoints.openai.api_server import build_async_engine_client_from_en
 from src.state.settings import AppSettings, VllmSettings
 
 from .model import ensure_voxtral_snapshot
+from .gpu_profiles import select_max_num_batched_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +41,94 @@ def _env_is_set(name: str) -> bool:
     return bool((os.getenv(name) or "").strip())
 
 
-def _read_mistral_params(model_dir: Path) -> tuple[int, int] | None:
+def _detect_cuda_capability() -> tuple[int, int] | None:
+    try:
+        import torch  # type: ignore
+
+        if not torch.cuda.is_available():
+            return None
+        cap = torch.cuda.get_device_capability(0)
+        if not isinstance(cap, tuple) or len(cap) != 2:
+            return None
+        major, minor = cap
+        return int(major), int(minor)
+    except Exception:
+        return None
+
+
+def _detect_gpu_name() -> str | None:
+    # Prefer torch when available (matches the actual device vLLM will run on).
+    try:
+        import torch  # type: ignore
+
+        if torch.cuda.is_available():
+            name = torch.cuda.get_device_name(0)
+            if isinstance(name, str) and name.strip():
+                return name.strip()
+    except Exception:
+        pass
+
+    # Fallback: nvidia-smi (works before torch is imported/initialized).
+    nvidia_smi = shutil.which("nvidia-smi")
+    if not nvidia_smi:
+        return None
+
+    try:
+        proc = subprocess.run(  # noqa: S603
+            [nvidia_smi, "--query-gpu=name", "--format=csv,noheader"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        return None
+
+    lines = [ln.strip() for ln in (proc.stdout or "").splitlines() if ln.strip()]
+    if not lines:
+        return None
+    return lines[0]
+
+
+def _gpu_supports_fp8() -> bool:
+    # vLLM considers FP8-capable CUDA GPUs to be compute capability >= 8.9 (Ada/Hopper+).
+    cap = _detect_cuda_capability()
+    if cap is None:
+        return False
+    major, minor = cap
+    return (major, minor) >= (8, 9)
+
+
+def _select_kv_cache_dtype(settings: AppSettings) -> str:
+    if _env_is_set("VLLM_KV_CACHE_DTYPE"):
+        dt = (settings.vllm.kv_cache_dtype or "").strip()
+    else:
+        dt = "fp8" if _gpu_supports_fp8() else "auto"
+
+    # Compatibility: some docs/older configs use fp8_e4m3fn; vLLM uses fp8_e4m3.
+    dt_l = dt.lower()
+    if dt_l == "fp8_e4m3fn":
+        return "fp8_e4m3"
+    return dt
+
+
+def _select_calculate_kv_scales(settings: AppSettings, *, kv_cache_dtype: str) -> bool:
+    if _env_is_set("VLLM_CALCULATE_KV_SCALES"):
+        return bool(settings.vllm.calculate_kv_scales)
+    return (kv_cache_dtype or "").strip().lower().startswith("fp8")
+
+
+def _select_max_num_batched_tokens(settings: AppSettings) -> int:
+    # Not env-configurable: we pick a sane per-GPU default to avoid footguns.
+    gpu_name = _detect_gpu_name()
+    if not gpu_name:
+        return int(settings.vllm.max_num_batched_tokens)
+    return int(select_max_num_batched_tokens(gpu_name))
+
+
+def _read_mistral_params(model_dir: Path) -> dict[str, int] | None:
     params_path = model_dir / "params.json"
-    result: tuple[int, int] | None = None
     if not params_path.exists():
-        return result
+        return None
 
     doc: Any | None
     try:
@@ -53,19 +137,32 @@ def _read_mistral_params(model_dir: Path) -> tuple[int, int] | None:
         doc = None
 
     if isinstance(doc, dict):
-        dim = doc.get("dim") or doc.get("hidden_size") or doc.get("d_model")
-        n_layers = doc.get("n_layers") or doc.get("num_hidden_layers") or doc.get("num_layers")
-        if dim is not None and n_layers is not None:
+        out: dict[str, int] = {}
+        for key, aliases in {
+            "dim": ("dim", "hidden_size", "d_model"),
+            "n_layers": ("n_layers", "num_hidden_layers", "num_layers"),
+            "n_kv_heads": ("n_kv_heads", "num_key_value_heads"),
+            "head_dim": ("head_dim", "kv_head_dim"),
+            "sliding_window": ("sliding_window",),
+        }.items():
+            v: Any | None = None
+            for a in aliases:
+                if a in doc:
+                    v = doc.get(a)
+                    break
+            if v is None:
+                continue
             try:
-                dim_i = int(dim)
-                layers_i = int(n_layers)
+                out[key] = int(v)
             except Exception:
-                dim_i = 0
-                layers_i = 0
-            if dim_i > 0 and layers_i > 0:
-                result = (dim_i, layers_i)
+                continue
 
-    return result
+        # Basic sanity check.
+        if out.get("n_layers", 0) <= 0:
+            return None
+        return out
+
+    return None
 
 
 def _sum_safetensors_bytes(model_dir: Path) -> int:
@@ -131,10 +228,14 @@ def _estimate_max_num_seqs(settings: AppSettings, model_dir: Path) -> int | None
     if not gpu_total:
         return None
 
-    arch = _read_mistral_params(model_dir)
-    if arch is None:
+    arch = _read_mistral_params(model_dir) or {}
+    n_layers = int(arch.get("n_layers", 0))
+    n_kv_heads = int(arch.get("n_kv_heads", 0))
+    head_dim = int(arch.get("head_dim", 0))
+    sliding_window = int(arch.get("sliding_window", 0))
+
+    if n_layers <= 0:
         return None
-    dim, n_layers = arch
 
     weights_bytes = _sum_safetensors_bytes(model_dir)
 
@@ -143,10 +244,25 @@ def _estimate_max_num_seqs(settings: AppSettings, model_dir: Path) -> int | None
         model_dtype=settings.vllm.dtype,
     )
 
-    # Approx KV bytes/token = (K + V) * layers * dim * bytes_per_elem
-    # where K and V are each `dim` elements per layer.
-    per_token_bytes = 2 * n_layers * dim * kv_bytes
-    per_seq_bytes = int(per_token_bytes) * int(max(1, settings.vllm.max_model_len))
+    # vLLM KV planning for sliding-window models uses:
+    #   num_tokens = min(sliding_window - 1 + max_num_batched_tokens, max_model_len)
+    # When a model exposes GQA params (n_kv_heads/head_dim), KV is sized on those.
+    if n_kv_heads > 0 and head_dim > 0:
+        per_token_bytes = 2 * n_layers * n_kv_heads * head_dim * kv_bytes
+    else:
+        dim = int(arch.get("dim", 0))
+        if dim <= 0:
+            return None
+        per_token_bytes = 2 * n_layers * dim * kv_bytes
+
+    max_model_len = int(max(1, settings.vllm.max_model_len))
+    max_batched = int(max(1, settings.vllm.max_num_batched_tokens))
+    if sliding_window > 0:
+        kv_tokens = min(max_model_len, max(1, int(sliding_window) - 1 + max_batched))
+    else:
+        kv_tokens = max_model_len
+
+    per_seq_bytes = int(per_token_bytes) * int(kv_tokens)
     if per_seq_bytes <= 0:
         return None
 
@@ -184,6 +300,7 @@ def _build_engine_args(settings: AppSettings, model_dir: Path, *, max_num_seqs: 
         "max_num_batched_tokens": settings.vllm.max_num_batched_tokens,
         "enforce_eager": settings.vllm.enforce_eager,
         "kv_cache_dtype": settings.vllm.kv_cache_dtype,
+        "calculate_kv_scales": settings.vllm.calculate_kv_scales,
         "tokenizer_mode": settings.vllm.tokenizer_mode,
         "config_format": settings.vllm.config_format,
         "load_format": settings.vllm.load_format,
@@ -223,6 +340,7 @@ def _with_vllm_max_num_seqs(settings: AppSettings, *, max_num_seqs: int) -> AppS
         max_num_batched_tokens=settings.vllm.max_num_batched_tokens,
         enforce_eager=settings.vllm.enforce_eager,
         kv_cache_dtype=settings.vllm.kv_cache_dtype,
+        calculate_kv_scales=settings.vllm.calculate_kv_scales,
         tokenizer_mode=settings.vllm.tokenizer_mode,
         config_format=settings.vllm.config_format,
         load_format=settings.vllm.load_format,
@@ -244,6 +362,48 @@ async def build_vllm_realtime(settings: AppSettings) -> tuple[Any, Any, Any, Any
     # Ensure a writable local snapshot exists and tekken.json delay is patched.
     settings.model.model_dir.mkdir(parents=True, exist_ok=True)
     model_dir = ensure_voxtral_snapshot(settings.model)
+
+    kv_cache_dtype = _select_kv_cache_dtype(settings)
+    calculate_kv_scales = _select_calculate_kv_scales(settings, kv_cache_dtype=kv_cache_dtype)
+    max_num_batched_tokens = _select_max_num_batched_tokens(settings)
+    if (
+        kv_cache_dtype != settings.vllm.kv_cache_dtype
+        or bool(calculate_kv_scales) != bool(settings.vllm.calculate_kv_scales)
+        or int(max_num_batched_tokens) != int(settings.vllm.max_num_batched_tokens)
+    ):
+        settings = AppSettings(
+            auth=settings.auth,
+            limits=settings.limits,
+            websocket=settings.websocket,
+            model=settings.model,
+            vllm=VllmSettings(
+                dtype=settings.vllm.dtype,
+                gpu_memory_utilization=settings.vllm.gpu_memory_utilization,
+                max_model_len=settings.vllm.max_model_len,
+                max_num_seqs=settings.vllm.max_num_seqs,
+                max_num_batched_tokens=int(max_num_batched_tokens),
+                enforce_eager=settings.vllm.enforce_eager,
+                kv_cache_dtype=kv_cache_dtype,
+                calculate_kv_scales=calculate_kv_scales,
+                tokenizer_mode=settings.vllm.tokenizer_mode,
+                config_format=settings.vllm.config_format,
+                load_format=settings.vllm.load_format,
+                compilation_config=settings.vllm.compilation_config,
+                disable_compile_cache=settings.vllm.disable_compile_cache,
+            ),
+        )
+
+    # Log the selection for operator visibility (important for tuning).
+    try:
+        gpu_name = _detect_gpu_name()
+    except Exception:
+        gpu_name = None
+    if gpu_name:
+        logger.info(
+            "vllm: max_num_batched_tokens=%s (gpu=%s)", int(settings.vllm.max_num_batched_tokens), gpu_name
+        )
+    else:
+        logger.info("vllm: max_num_batched_tokens=%s", int(settings.vllm.max_num_batched_tokens))
 
     max_num_seqs = _tune_max_num_seqs(settings, model_dir)
     engine_args = _build_engine_args(settings, model_dir, max_num_seqs=max_num_seqs)

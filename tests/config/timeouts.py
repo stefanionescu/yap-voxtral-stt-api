@@ -8,7 +8,7 @@ JITTER_GROUP_SIZE: int = 16
 HANDSHAKE_ALLOWANCE_NO_WAIT_S: float = 5.0
 HANDSHAKE_ALLOWANCE_WAIT_S: float = 10.0
 
-# Finalization allowance (waiting for the server to emit transcription.done).
+# Finalization allowance (waiting for the server to emit done).
 FINALIZE_ALLOWANCE_EXTRA_S: float = 30.0
 FINALIZE_ALLOWANCE_CAP_S: float = 120.0
 

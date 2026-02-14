@@ -47,6 +47,7 @@ class VllmSettings:
     max_num_batched_tokens: int
     enforce_eager: bool
     kv_cache_dtype: str
+    calculate_kv_scales: bool
     tokenizer_mode: str
     config_format: str
     load_format: str

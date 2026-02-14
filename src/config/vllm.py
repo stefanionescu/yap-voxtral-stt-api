@@ -18,13 +18,14 @@ if VLLM_GPU_MEMORY_UTILIZATION <= 0.0 or VLLM_GPU_MEMORY_UTILIZATION > 1.0:
 
 # Voxtral Realtime is ~12.5 "steps"/sec (~80ms/token).
 #
-# Default max model length targets a single long utterance of ~5 minutes:
-# 5min = 300s; 300 / 0.08 = 3750 steps; use a small buffer -> 4096.
+# Default max model length is intentionally small to maximize concurrency.
+# This repo implements "infinite" / long-running STT by internally rolling
+# segments (with overlap) before hitting max_model_len.
 _MAX_MODEL_LEN_RAW = (os.getenv("VLLM_MAX_MODEL_LEN") or "").strip()
 try:
-    VLLM_MAX_MODEL_LEN: int = int(_MAX_MODEL_LEN_RAW) if _MAX_MODEL_LEN_RAW else 4096
+    VLLM_MAX_MODEL_LEN: int = int(_MAX_MODEL_LEN_RAW) if _MAX_MODEL_LEN_RAW else 1024
 except Exception:
-    VLLM_MAX_MODEL_LEN = 4096
+    VLLM_MAX_MODEL_LEN = 1024
 VLLM_MAX_MODEL_LEN = max(1, int(VLLM_MAX_MODEL_LEN))
 
 _MAX_NUM_SEQS_RAW = (os.getenv("VLLM_MAX_NUM_SEQS") or "").strip()
@@ -34,12 +35,11 @@ except Exception:
     VLLM_MAX_NUM_SEQS = 128
 VLLM_MAX_NUM_SEQS = max(1, int(VLLM_MAX_NUM_SEQS))
 
-_MAX_BATCHED_TOKENS_RAW = (os.getenv("VLLM_MAX_NUM_BATCHED_TOKENS") or "").strip()
-try:
-    VLLM_MAX_NUM_BATCHED_TOKENS: int = int(_MAX_BATCHED_TOKENS_RAW) if _MAX_BATCHED_TOKENS_RAW else 4096
-except Exception:
-    VLLM_MAX_NUM_BATCHED_TOKENS = 4096
-VLLM_MAX_NUM_BATCHED_TOKENS = max(1, int(VLLM_MAX_NUM_BATCHED_TOKENS))
+# max_num_batched_tokens is a throughput/tail-latency knob.
+#
+# It is selected per-GPU at runtime (see `src/runtime/vllm.py`). This constant is
+# a safe fallback used when GPU detection is unavailable (e.g., CPU-only tests).
+VLLM_MAX_NUM_BATCHED_TOKENS: int = 2048
 
 _ENFORCE_EAGER_RAW = (os.getenv("VLLM_ENFORCE_EAGER") or "").strip().lower()
 VLLM_ENFORCE_EAGER: bool = _ENFORCE_EAGER_RAW in {"1", "true", "yes", "y", "on"} if _ENFORCE_EAGER_RAW else False
@@ -47,13 +47,18 @@ VLLM_ENFORCE_EAGER: bool = _ENFORCE_EAGER_RAW in {"1", "true", "yes", "y", "on"}
 # KV cache dtype: "auto", "fp8_e4m3fn", "fp8_e5m2", etc. (vLLM-dependent).
 VLLM_KV_CACHE_DTYPE: str = (os.getenv("VLLM_KV_CACHE_DTYPE") or "").strip() or "auto"
 
-# Voxtral recommends Mistral-specific loading flags for vLLM:
+# Voxtral requires Mistral-specific loading flags for vLLM:
 #   --tokenizer-mode mistral --config-format mistral --load-format mistral
-VLLM_TOKENIZER_MODE: str = (os.getenv("VLLM_TOKENIZER_MODE") or "").strip() or "mistral"
+#
+# These are intentionally not configurable via env to prevent misconfiguration.
+VLLM_TOKENIZER_MODE: str = "mistral"
+VLLM_CONFIG_FORMAT: str = "mistral"
+VLLM_LOAD_FORMAT: str = "mistral"
 
-VLLM_CONFIG_FORMAT: str = (os.getenv("VLLM_CONFIG_FORMAT") or "").strip() or "mistral"
-
-VLLM_LOAD_FORMAT: str = (os.getenv("VLLM_LOAD_FORMAT") or "").strip() or "mistral"
+_CALC_KV_SCALES_RAW = (os.getenv("VLLM_CALCULATE_KV_SCALES") or "").strip().lower()
+VLLM_CALCULATE_KV_SCALES: bool = (
+    _CALC_KV_SCALES_RAW in {"1", "true", "yes", "y", "on"} if _CALC_KV_SCALES_RAW else False
+)
 
 # Optional JSON string for vLLM compilation config.
 #
@@ -81,6 +86,7 @@ VLLM_DISABLE_COMPILE_CACHE: bool = (
 )
 
 __all__ = [
+    "VLLM_CALCULATE_KV_SCALES",
     "VLLM_COMPILATION_CONFIG",
     "VLLM_CONFIG_FORMAT",
     "VLLM_DISABLE_COMPILE_CACHE",

@@ -72,8 +72,8 @@ class MessageHandler:
             self.ready_event.set()
             return
 
-        if msg_type == config.PROTO_TYPE_TRANSCRIPTION_DELTA:
-            delta = payload.get("delta") if isinstance(payload, dict) else None
+        if msg_type == config.PROTO_TYPE_TOKEN:
+            delta = payload.get("text") if isinstance(payload, dict) else None
             if isinstance(delta, str) and delta:
                 if self.first_delta_ts is None:
                     self.first_delta_ts = now
@@ -82,10 +82,13 @@ class MessageHandler:
                 self.last_partial_ts = now
             return
 
-        if msg_type == config.PROTO_TYPE_TRANSCRIPTION_DONE:
-            txt = payload.get("text") if isinstance(payload, dict) else None
-            if isinstance(txt, str) and txt:
+        if msg_type == config.PROTO_TYPE_FINAL:
+            txt = payload.get("normalized_text") if isinstance(payload, dict) else None
+            if isinstance(txt, str):
                 self.final_text = txt
+            return
+
+        if msg_type == config.PROTO_TYPE_DONE:
             self.final_recv_ts = now
             self.done_event.set()
             return

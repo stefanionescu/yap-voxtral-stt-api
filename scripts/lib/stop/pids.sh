@@ -4,9 +4,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/../config/paths.sh"
+source "${SCRIPT_DIR}/../../config/paths.sh"
 # shellcheck disable=SC1091
-source "${ROOT_DIR}/scripts/lib/log.sh"
+source "${ROOT_DIR}/scripts/lib/log/logging.sh"
 
 stop_pid_file() {
   local pid_file="$1"
@@ -55,8 +55,8 @@ stop_pid_file() {
 main() {
   stop_pid_file "${TAIL_PID_FILE}" "log tail" "0"
   stop_pid_file "${LAUNCHER_PID_FILE}" "launcher" "0"
+  stop_pid_file "${LOG_TRIM_PID_FILE}" "log trimmer" "0"
   stop_pid_file "${SERVER_PID_FILE}" "server" "1"
 }
 
 main "$@"
-

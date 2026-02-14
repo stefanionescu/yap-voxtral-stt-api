@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import os
 import logging
 
 from src.config.logging import LOG_LEVEL, LOG_FORMAT
-from src.runtime.third_party_log_filters import configure as configure_third_party_log_filters
 
 
 def configure_logging() -> None:
-    configure_third_party_log_filters()
+    # vLLM can be noisy at import/startup. Keep it tame unless explicitly enabled.
+    if (os.getenv("SHOW_VLLM_LOGS") or "").strip().lower() not in {"1", "true", "yes"}:
+        logging.getLogger("vllm").setLevel(logging.WARNING)
+        logging.getLogger("vllm.entrypoints").setLevel(logging.WARNING)
     logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 
 

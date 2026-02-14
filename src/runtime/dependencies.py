@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import logging
 
 from src.state import RuntimeDeps
@@ -29,21 +28,23 @@ async def build_runtime_deps() -> RuntimeDeps:
     )
 
     max_connections = tuned_settings.limits.max_concurrent_connections
-    if not (os.getenv("MAX_CONCURRENT_CONNECTIONS") or "").strip():
-        max_connections = min(max_connections, tuned_settings.vllm.max_num_seqs)
-        tuned_settings = AppSettings(
-            auth=tuned_settings.auth,
-            limits=LimitsSettings(
-                max_concurrent_connections=max_connections,
-                ws_message_window_seconds=tuned_settings.limits.ws_message_window_seconds,
-                ws_max_messages_per_window=tuned_settings.limits.ws_max_messages_per_window,
-                ws_cancel_window_seconds=tuned_settings.limits.ws_cancel_window_seconds,
-                ws_max_cancels_per_window=tuned_settings.limits.ws_max_cancels_per_window,
-            ),
-            websocket=tuned_settings.websocket,
-            model=tuned_settings.model,
-            vllm=tuned_settings.vllm,
-        )
+    if max_connections <= 0:
+        # Auto: default to vLLM's tuned sequence capacity.
+        max_connections = int(tuned_settings.vllm.max_num_seqs)
+
+    tuned_settings = AppSettings(
+        auth=tuned_settings.auth,
+        limits=LimitsSettings(
+            max_concurrent_connections=max_connections,
+            ws_message_window_seconds=tuned_settings.limits.ws_message_window_seconds,
+            ws_max_messages_per_window=tuned_settings.limits.ws_max_messages_per_window,
+            ws_cancel_window_seconds=tuned_settings.limits.ws_cancel_window_seconds,
+            ws_max_cancels_per_window=tuned_settings.limits.ws_max_cancels_per_window,
+        ),
+        websocket=tuned_settings.websocket,
+        model=tuned_settings.model,
+        vllm=tuned_settings.vllm,
+    )
 
     connections = ConnectionManager(max_connections=tuned_settings.limits.max_concurrent_connections)
 

@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/config/paths.sh"
 # shellcheck disable=SC1091
-source "${ROOT_DIR}/scripts/lib/log.sh"
+source "${ROOT_DIR}/scripts/lib/log/logging.sh"
 
 if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
   log_err "[warmup] ✗ venv not found at ${VENV_DIR}. Run: bash scripts/main.sh"

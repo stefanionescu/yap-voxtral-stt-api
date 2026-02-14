@@ -6,7 +6,8 @@ Streaming speech-to-text (STT) server for **Mistral Voxtral Realtime** using **v
 
 - FastAPI + WebSocket endpoint: `GET /api/asr-streaming`
 - JSON envelope: `{type, session_id, request_id, payload}`
-- vLLM Realtime semantics inside the envelope (`session.update`, `input_audio_buffer.*`, `transcription.*`)
+- vLLM Realtime semantics for inputs (`session.update`, `input_audio_buffer.*`)
+- YAP-like streaming outputs (`token`, `final`, `done`, `error`, `status`)
 - API key auth, connection cap, idle timeout, hard max duration, rate limits
 - Test clients + benchmarks (warmup, bench, idle, convo, remote)
 
@@ -78,7 +79,8 @@ Notes:
 - `scripts/main.sh` creates a venv at `.venv`, installs pinned deps from `requirements.txt`,
   and tails `server.log`.
 - Ctrl+C detaches from the log tail only. Stop the server with `bash scripts/stop.sh`.
-- Logs: `tail -f server.log`
+- Logs: `tail -F server.log`
+- Logs are bounded (trimmed periodically; see `scripts/config/logs.sh`)
 - Status: `bash scripts/lib/status.sh`
 - Bind/port: set `SERVER_BIND_HOST` / `SERVER_PORT` (defaults: `0.0.0.0:8000`)
 
@@ -121,10 +123,12 @@ Minimal transcription flow:
 {"type":"input_audio_buffer.commit","session_id":"s1","request_id":"utt-1","payload":{"final":true}}
 ```
 
-The server forwards vLLM Realtime events (same `type` values) inside the envelope, for example:
+The server emits YAP-like output frames (same envelope, different `type` values), for example:
 - `session.created`, `session.updated`
-- `transcription.delta` (payload has `delta`)
-- `transcription.done` (payload has `text`)
+- `token` (payload has `text`)
+- `final` (payload has `normalized_text`)
+- `done` (payload has `usage`)
+- `status` (e.g. overload drop warnings)
 - `error`
 
 Full protocol details (close codes, error payload schema, lifecycle rules) are in `ADVANCED.md`.

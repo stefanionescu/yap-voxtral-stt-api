@@ -15,14 +15,18 @@ WS_KEY_SESSION_ID = "session_id"
 WS_KEY_REQUEST_ID = "request_id"
 WS_KEY_PAYLOAD = "payload"
 
+# Unknown identifiers (used when rejecting connections before the client sends any IDs).
+WS_UNKNOWN_SESSION_ID = "unknown"
+WS_UNKNOWN_REQUEST_ID = "unknown"
+
 # Close codes
 WS_CLOSE_CLIENT_REQUEST_CODE = 1000
-WS_CLOSE_UNAUTHORIZED_CODE = 4001
-WS_CLOSE_BUSY_CODE = 4002
+WS_CLOSE_UNAUTHORIZED_CODE = int(os.getenv("WS_CLOSE_UNAUTHORIZED_CODE", "1008"))
+WS_CLOSE_BUSY_CODE = int(os.getenv("WS_CLOSE_BUSY_CODE", "1013"))
 WS_CLOSE_IDLE_CODE = 4000
 WS_CLOSE_MAX_DURATION_CODE = 4003
 
-WS_CLOSE_IDLE_REASON = "idle timeout"
+WS_CLOSE_IDLE_REASON = os.getenv("WS_CLOSE_IDLE_REASON", "idle_timeout")
 WS_CLOSE_MAX_DURATION_REASON = "max connection duration reached"
 
 # Connection lifecycle.
@@ -74,7 +78,6 @@ WS_ERROR_AUTH_FAILED = "authentication_failed"
 WS_ERROR_SERVER_AT_CAPACITY = "server_at_capacity"
 WS_ERROR_INVALID_MESSAGE = "invalid_message"
 WS_ERROR_INVALID_PAYLOAD = "invalid_payload"
-WS_ERROR_UTTERANCE_TOO_LONG = "utterance_too_long"
 WS_ERROR_RATE_LIMITED = "rate_limited"
 WS_ERROR_INTERNAL = "internal_error"
 
@@ -91,13 +94,14 @@ __all__ = [
     "WS_INBOUND_QUEUE_MAX",
     "WS_MAX_CONNECTION_DURATION_S",
     "WS_WATCHDOG_TICK_S",
+    "WS_UNKNOWN_REQUEST_ID",
+    "WS_UNKNOWN_SESSION_ID",
     "WS_ERROR_AUTH_FAILED",
     "WS_ERROR_INTERNAL",
     "WS_ERROR_INVALID_MESSAGE",
     "WS_ERROR_INVALID_PAYLOAD",
     "WS_ERROR_RATE_LIMITED",
     "WS_ERROR_SERVER_AT_CAPACITY",
-    "WS_ERROR_UTTERANCE_TOO_LONG",
     "WS_KEY_PAYLOAD",
     "WS_KEY_REQUEST_ID",
     "WS_KEY_SESSION_ID",

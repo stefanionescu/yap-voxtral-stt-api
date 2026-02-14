@@ -14,7 +14,7 @@ async def wait_for_done(handler, ws, *, session_id: str, request_id: str, timeou
             await done.wait()
     except TimeoutError:
         if getattr(handler, "error", None) is None:
-            handler.error = f"timeout waiting for transcription.done (>{timeout_s:.1f}s)"
+            handler.error = f"timeout waiting for done (>{timeout_s:.1f}s)"
         handler.done_event.set()
 
 

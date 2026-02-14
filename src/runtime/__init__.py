@@ -1,3 +1,7 @@
-from .dependencies import RuntimeDeps, build_runtime_deps
+"""Runtime package.
 
-__all__ = ["RuntimeDeps", "build_runtime_deps"]
+Keep this module dependency-light: importing `src.runtime.*` in CPU-only tooling
+and unit tests should not require vLLM or CUDA.
+"""
+
+__all__: list[str] = []

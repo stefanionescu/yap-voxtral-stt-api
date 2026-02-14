@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/../config/paths.sh"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/../config/server.sh"
 # shellcheck disable=SC1091
-source "${ROOT_DIR}/scripts/lib/log.sh"
+source "${ROOT_DIR}/scripts/lib/log/logging.sh"
 
 pid_file="${SERVER_PID_FILE}"
 if [[ -f ${pid_file} ]]; then

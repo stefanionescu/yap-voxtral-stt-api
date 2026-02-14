@@ -18,8 +18,9 @@ PROTO_TYPE_AUDIO_COMMIT: str = "input_audio_buffer.commit"
 
 # Server message types
 PROTO_TYPE_ERROR: str = "error"
-PROTO_TYPE_TRANSCRIPTION_DELTA: str = "transcription.delta"
-PROTO_TYPE_TRANSCRIPTION_DONE: str = "transcription.done"
+PROTO_TYPE_TOKEN: str = "token"
+PROTO_TYPE_FINAL: str = "final"
+PROTO_TYPE_DONE: str = "done"
 PROTO_TYPE_SESSION_CREATED: str = "session.created"
 PROTO_TYPE_SESSION_UPDATED: str = "session.updated"
 
@@ -38,6 +39,7 @@ __all__ = [
     "PROTO_TYPE_SESSION_CREATED",
     "PROTO_TYPE_SESSION_UPDATE",
     "PROTO_TYPE_SESSION_UPDATED",
-    "PROTO_TYPE_TRANSCRIPTION_DELTA",
-    "PROTO_TYPE_TRANSCRIPTION_DONE",
+    "PROTO_TYPE_TOKEN",
+    "PROTO_TYPE_FINAL",
+    "PROTO_TYPE_DONE",
 ]

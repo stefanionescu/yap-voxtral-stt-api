@@ -4,11 +4,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/../config/paths.sh"
+source "${SCRIPT_DIR}/../../config/paths.sh"
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/../config/stop.sh"
+source "${SCRIPT_DIR}/../../config/stop.sh"
 # shellcheck disable=SC1091
-source "${ROOT_DIR}/scripts/lib/log.sh"
+source "${ROOT_DIR}/scripts/lib/log/logging.sh"
 
 main() {
   log_info "[stop] Nuke: wiping repo runtime + caches"

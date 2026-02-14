@@ -83,27 +83,36 @@ bash scripts/lib/doctor.sh
 
 ## vLLM Configuration
 
-All vLLM knobs are env-driven and loaded at server startup (`src/runtime/settings.py`),
-then passed into `AsyncEngineArgs` (`src/runtime/vllm.py`).
+Most vLLM knobs are env-driven and loaded at server startup (`src/runtime/settings.py`),
+then passed into `AsyncEngineArgs` (`src/runtime/vllm.py`). A small set of values is
+fixed/per-GPU to prevent accidental misconfiguration (e.g., Voxtral loader flags and
+realtime batching defaults).
 
 Common knobs:
 
 | Variable | Default | Notes |
 |---------|---------|------|
 | `VLLM_GPU_MEMORY_UTILIZATION` | `0.92` | Higher = more KV capacity, higher OOM risk |
-| `VLLM_MAX_MODEL_LEN` | `4096` | ~= 5.5 minutes at ~80ms/token |
+| `VLLM_MAX_MODEL_LEN` | `1024` | Per-internal-segment context limit (audio+text). Smaller = more concurrency. |
 | `VLLM_MAX_NUM_SEQS` | `128` | Upper bound on concurrent sequences in the scheduler |
-| `VLLM_MAX_NUM_BATCHED_TOKENS` | `4096` | Higher = throughput, worse tail latency under load |
-| `VLLM_KV_CACHE_DTYPE` | `auto` | FP8 variants can reduce KV memory on L40S/H100 (vLLM-dependent) |
+| `VLLM_MAX_NUM_BATCHED_TOKENS` | `2048` / `4096` | Selected per-GPU at runtime (not env-configurable) |
+| `VLLM_KV_CACHE_DTYPE` | `auto` | Default policy: auto-select `fp8` KV on FP8-capable GPUs (L40/L40S/H100/etc), else `auto` |
+| `VLLM_CALCULATE_KV_SCALES` | `false` | Default policy: auto-enable when FP8 KV is selected (override via env) |
 | `VLLM_ENFORCE_EAGER` | `false` | `true` is safer but usually slower |
-| `VLLM_TOKENIZER_MODE` | `mistral` | Voxtral-recommended loader flag |
-| `VLLM_CONFIG_FORMAT` | `mistral` | Voxtral-recommended loader flag |
-| `VLLM_LOAD_FORMAT` | `mistral` | Voxtral-recommended loader flag |
+| `VLLM_TOKENIZER_MODE` | `mistral` | Fixed in code (not configurable via env) |
+| `VLLM_CONFIG_FORMAT` | `mistral` | Fixed in code (not configurable via env) |
+| `VLLM_LOAD_FORMAT` | `mistral` | Fixed in code (not configurable via env) |
+
+Auto-tuning behavior:
+- If `VLLM_MAX_NUM_SEQS` is **unset**, the server estimates a safe `max_num_seqs` from GPU memory, model weight size,
+  KV cache dtype, sliding window, and `VLLM_MAX_NUM_BATCHED_TOKENS`. Set `VLLM_MAX_NUM_SEQS` to disable tuning.
+- `VLLM_MAX_NUM_BATCHED_TOKENS` is selected per-GPU in `src/runtime/gpu_profiles.py` (intentionally not configurable via env).
 
 Voxtral streaming timing:
 - Voxtral Realtime operates on an ~80ms step (12.5Hz). Approximate:
-  - `max_seconds ~= VLLM_MAX_MODEL_LEN * 0.08`
-  - `VLLM_MAX_MODEL_LEN ~= max_seconds / 0.08`
+  - `segment_max_seconds ~= (VLLM_MAX_MODEL_LEN - headroom_tokens) * 0.08`
+  - This repo supports long-running / “infinite” streaming by internally rolling segments
+    (see `STT_INTERNAL_ROLL`, `STT_SEGMENT_SECONDS`, `STT_SEGMENT_OVERLAP_SECONDS`).
 
 ## Scripts and Lifecycle
 
@@ -111,11 +120,12 @@ This repo uses shell scripts to keep deployments repeatable.
 
 - `scripts/main.sh` runs `scripts/steps/*` in order:
   - `01-require-env.sh` (validates required env vars)
-  - `02-venv.sh` (creates `.venv/` if missing)
-  - `03-install-deps.sh` (installs pinned deps; CUDA 13 torch backend)
-  - `04-start-server.sh` (starts uvicorn; writes `server.pid`)
-  - `05-wait-health.sh` (polls `/healthz`)
-  - `06-tail-logs.sh` (tails `server.log` unless `TAIL_LOGS=0`)
+  - `02-check-gpu.sh` (hard-fails unless GPU is on the allowlist)
+  - `03-venv.sh` (creates `.venv/` if missing)
+  - `04-install-deps.sh` (installs pinned deps; CUDA 13 torch backend)
+  - `05-start-server.sh` (starts uvicorn detached; writes `server.pid`)
+  - `06-wait-health.sh` (polls `/healthz`)
+  - `07-tail-logs.sh` (tails `server.log` unless `TAIL_LOGS=0`)
 
 Stop modes:
 
@@ -160,7 +170,7 @@ When auth fails, the server accepts the socket, sends a structured `error`, then
 Server policy:
 - Idle timeout: `WS_IDLE_TIMEOUT_S` (default: 150s; set to `0` to disable) closed with code `4000`
 - Max duration: `WS_MAX_CONNECTION_DURATION_S` (default: 5400s = 90 min; set to `0` to disable) closed with code `4003`
-- Capacity guard: `MAX_CONCURRENT_CONNECTIONS` (required) rejects with code `4002`
+- Capacity guard: `MAX_CONCURRENT_CONNECTIONS` (default: `0` = auto from tuned vLLM `max_num_seqs`) rejects with code `4002`
 
 What counts as activity:
 - Any received JSON text message (including `{"type":"ping",...}`)
@@ -217,10 +227,12 @@ Transcription:
 
 ### What You Receive
 
-The server forwards vLLM Realtime events inside the envelope. You will typically see:
+The server emits YAP-like streaming frames inside the envelope. You will typically see:
 - `session.created`, `session.updated`
-- `transcription.delta` (payload contains `delta`)
-- `transcription.done` (payload contains `text`)
+- `token` (payload contains `text`)
+- `final` (payload contains `normalized_text`)
+- `done` (payload contains `usage`)
+- `status` (server warnings, e.g. overload drops)
 - `error`
 
 The server also emits:
@@ -262,8 +274,7 @@ All server-side errors are returned as:
   "payload": {
     "code": "rate_limited",
     "message": "message rate limit: ...",
-    "reason_code": "message_rate_limited",
-    "details": { }
+    "details": { "reason_code": "message_rate_limited" }
   }
 }
 ```
@@ -279,7 +290,7 @@ Expected audio format:
 Client recommendations:
 - Chunk size: 80ms is a good default for Voxtral Realtime (matches its 80ms step).
 - Use VAD on the client (or upstream) and send `commit final=true` when speech ends.
-- Close the socket after `transcription.done` if you want to minimize KV/cache residency.
+- Close the socket after `done` if you want to minimize KV/cache residency.
 
 ## Connection Management
 
@@ -288,9 +299,11 @@ This server supports long-lived WebSocket connections (hours/days) with many utt
 - Finalize quickly (`commit final=true`) and start a new `request_id` for the next utterance.
 - You may keep the socket open across utterances; send `{"type":"ping",...}` periodically (or set `WS_IDLE_TIMEOUT_S=0`).
 
-To prevent unbounded GPU/engine memory growth from a never-ending stream, the server enforces
-`MAX_UTTERANCE_AUDIO_SECONDS` (default: 300s). If exceeded, the active request is cancelled with an
-`error` (`code: "utterance_too_long"`).
+This server supports long-running / "infinite" speech on a single utterance by internally
+rolling the active request into bounded vLLM segments (with a small audio overlap).
+
+To stay live under overload, the server may drop oldest unprocessed audio once per-connection
+backlog exceeds `STT_MAX_BACKLOG_SECONDS` (emits a `status` warning frame).
 
 ## Capacity and Latency Notes
 
@@ -301,7 +314,7 @@ Two latency components matter:
 Concurrency is often limited by KV-cache memory for long-lived streams. Practical levers:
 - Keep sessions short and finalize quickly.
 - Consider KV cache compression (`VLLM_KV_CACHE_DTYPE=fp8_*`) if supported by your vLLM build.
-- Tune batching (`VLLM_MAX_NUM_BATCHED_TOKENS`) to balance throughput vs tail latency.
+- If you need to change batching (`VLLM_MAX_NUM_BATCHED_TOKENS`), edit the per-GPU table in `src/runtime/gpu_profiles.py`.
 
 ## Test Clients
 
@@ -342,7 +355,7 @@ VOXTRAL_API_KEY=secret_token python -m tests.e2e.remote --server localhost:8000
 ### vLLM Install Fails
 
 - Confirm you are using `uv` on a GPU host.
-- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/steps/03-install-deps.sh`).
+- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu130` (see `scripts/steps/04-install-deps.sh`).
 - Run `bash scripts/lib/doctor.sh` to confirm `torch.version.cuda` is `13.x`.
 
 ### Model Download Is Slow or Fails
@@ -350,7 +363,7 @@ VOXTRAL_API_KEY=secret_token python -m tests.e2e.remote --server localhost:8000
 - Set `HF_TOKEN` to avoid rate limits and to access gated/private repos.
 - Ensure the snapshot directory (`models/voxtral` by default) is writable.
 
-### No `transcription.delta` Events
+### No `token` Events
 
 - If you stream silence, you will usually get only the final.
 - Remember the model runs with a configured `transcription_delay_ms` which can delay partial output.

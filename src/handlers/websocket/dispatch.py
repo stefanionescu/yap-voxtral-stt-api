@@ -9,8 +9,7 @@ from fastapi import WebSocket
 
 from src.runtime.dependencies import RuntimeDeps
 from src.realtime import EnvelopeState, RealtimeConnectionAdapter
-from src.config.websocket import WS_ERROR_INVALID_PAYLOAD, WS_ERROR_UTTERANCE_TOO_LONG
-from src.config.limits import ASR_SAMPLE_RATE_HZ, MAX_UTTERANCE_AUDIO_BYTES, MAX_UTTERANCE_AUDIO_SECONDS
+from src.config.websocket import WS_ERROR_INVALID_PAYLOAD
 
 from .errors import send_error, safe_send_envelope
 
@@ -18,22 +17,6 @@ HandlerFn = Callable[
     [WebSocket, RuntimeDeps, EnvelopeState, RealtimeConnectionAdapter | None, str, str, dict[str, Any]],
     Awaitable[RealtimeConnectionAdapter | None],
 ]
-
-
-def _estimate_b64_decoded_bytes(s: str) -> int:
-    """Estimate decoded byte length of a base64 string without decoding it."""
-    s = (s or "").strip()
-    if not s:
-        return 0
-
-    padding = 0
-    if s.endswith("=="):
-        padding = 2
-    elif s.endswith("="):
-        padding = 1
-
-    # base64 expands 3 bytes -> 4 chars
-    return max(0, (len(s) * 3) // 4 - padding)
 
 
 async def _ensure_connection(
@@ -64,7 +47,6 @@ async def _handle_cancel(
         await conn.cancel()
     state.active_request_id = None
     state.inflight_request_id = None
-    state.active_request_audio_bytes = 0
     await safe_send_envelope(
         ws,
         msg_type="cancelled",
@@ -128,7 +110,6 @@ async def _handle_commit(
             await conn.cancel()
             state.inflight_request_id = None
         state.active_request_id = request_id
-        state.active_request_audio_bytes = 0
     else:
         if state.active_request_id is None:
             await send_error(
@@ -161,7 +142,6 @@ async def _handle_commit(
     await conn.handle_event("input_audio_buffer.commit", {"final": final})
     if final:
         state.active_request_id = None
-        state.active_request_audio_bytes = 0
     return conn
 
 
@@ -196,31 +176,6 @@ async def _handle_append(
             reason_code="no_active_request",
         )
         return conn
-
-    if MAX_UTTERANCE_AUDIO_BYTES > 0:
-        state.active_request_audio_bytes += _estimate_b64_decoded_bytes(audio)
-        if state.active_request_audio_bytes > MAX_UTTERANCE_AUDIO_BYTES:
-            received_s = state.active_request_audio_bytes / (ASR_SAMPLE_RATE_HZ * 2)
-            await send_error(
-                ws,
-                session_id=session_id,
-                request_id=request_id,
-                error_code=WS_ERROR_UTTERANCE_TOO_LONG,
-                message="utterance exceeded maximum audio duration; finalize or start a new request",
-                reason_code="utterance_too_long",
-                details={
-                    "max_audio_seconds": float(MAX_UTTERANCE_AUDIO_SECONDS),
-                    "max_audio_bytes": int(MAX_UTTERANCE_AUDIO_BYTES),
-                    "received_audio_seconds": float(received_s),
-                    "received_audio_bytes": int(state.active_request_audio_bytes),
-                },
-            )
-            if conn is not None:
-                await conn.cancel()
-            state.active_request_id = None
-            state.inflight_request_id = None
-            state.active_request_audio_bytes = 0
-            return conn
 
     conn = await _ensure_connection(conn, runtime_deps=runtime_deps, ws=ws, state=state, initialize=True)
     await conn.handle_event("input_audio_buffer.append", {"audio": audio})

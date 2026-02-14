@@ -32,7 +32,7 @@ async def ensure_completion_and_close(
             await done.wait()
     except TimeoutError:
         if getattr(handler, "error", None) is None:
-            handler.error = f"timeout waiting for transcription.done (>{timeout_s:.1f}s)"
+            handler.error = f"timeout waiting for done (>{timeout_s:.1f}s)"
         handler.done_event.set()
 
     await close_ws_gracefully(ws, base)
