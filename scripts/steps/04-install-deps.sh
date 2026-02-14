@@ -23,10 +23,10 @@ _pip_install() {
   fi
 }
 
-# Ensure uv is available (preferred installer for CUDA 12.8 wheels).
+# Ensure uv is available (preferred installer for CUDA wheels).
 if ! command -v uv >/dev/null 2>&1; then
   log_info "[deps] Installing uv"
-  pip install uv 2>&1 | tail -1
+  pip install uv
 fi
 
 # ---------------------------------------------------------------------------

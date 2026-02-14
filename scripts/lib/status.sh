@@ -9,17 +9,18 @@ source "${SCRIPT_DIR}/../config/paths.sh"
 source "${SCRIPT_DIR}/../config/server.sh"
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/scripts/lib/log/logging.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/helpers.sh"
 
 pid_file="${SERVER_PID_FILE}"
-if [[ -f ${pid_file} ]]; then
-  pid="$(cat "${pid_file}" 2>/dev/null || true)"
-  if [[ -n ${pid} ]] && ps -p "${pid}" >/dev/null 2>&1; then
-    log_info "[status] running pid=${pid}"
-  else
-    log_warn "[status] stale pid file at ${pid_file}"
-  fi
+if is_pid_alive "${pid_file}"; then
+  log_info "[status] running pid=${PID_VALUE}"
 else
-  log_info "[status] not running (no server.pid)"
+  if [[ -f ${pid_file} ]]; then
+    log_warn "[status] stale pid file at ${pid_file}"
+  else
+    log_info "[status] not running (no server.pid)"
+  fi
 fi
 
 if command -v curl >/dev/null 2>&1; then

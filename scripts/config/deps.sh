@@ -4,11 +4,10 @@ set -euo pipefail
 # Runtime dependency install configuration.
 REQ_FILE="${REQ_FILE:-${ROOT_DIR}/requirements.txt}"
 
-# CUDA 12.8 torch wheels index.
-PYTORCH_CUDA_INDEX_URL="${PYTORCH_CUDA_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
-
-# uv --torch-backend flag value.
-TORCH_BACKEND="${TORCH_BACKEND:-cu128}"
+# Auto-detect CUDA version and set TORCH_BACKEND / PYTORCH_CUDA_INDEX_URL.
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/lib/cuda.sh"
+detect_cuda
 
 # vLLM wheel (GitHub release asset — not on PyPI for this version).
 VLLM_WHEEL_URL="${VLLM_WHEEL_URL:-https://github.com/vllm-project/vllm/releases/download/v0.16.0/vllm-0.16.0-cp38-abi3-manylinux_2_31_x86_64.whl}"

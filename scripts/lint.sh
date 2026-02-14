@@ -62,13 +62,13 @@ export RUN_FIX
 
 case "${ONLY}" in
   python)
-    bash "${ROOT_DIR}/scripts/lib/lint-python.sh"
+    bash "${ROOT_DIR}/scripts/lib/lint/python.sh"
     ;;
   shell)
-    bash "${ROOT_DIR}/scripts/lib/lint-shell.sh"
+    bash "${ROOT_DIR}/scripts/lib/lint/shell.sh"
     ;;
   "")
-    bash "${ROOT_DIR}/scripts/lib/lint-python.sh"
-    bash "${ROOT_DIR}/scripts/lib/lint-shell.sh"
+    bash "${ROOT_DIR}/scripts/lib/lint/python.sh"
+    bash "${ROOT_DIR}/scripts/lib/lint/shell.sh"
     ;;
 esac

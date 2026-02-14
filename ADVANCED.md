@@ -9,6 +9,7 @@ See `.env.example` for the minimal set of environment variables.
 ## Contents
 
 - [Authentication Coverage](#authentication-coverage)
+- [CUDA Version](#cuda-version)
 - [Model Snapshot and `tekken.json` Patching](#model-snapshot-and-tekkenjson-patching)
 - [Voxtral Realtime Latency: `transcription_delay_ms`](#voxtral-realtime-latency-transcription_delay_ms)
 - [vLLM Installation Notes](#vllm-installation-notes)
@@ -28,6 +29,31 @@ See `.env.example` for the minimal set of environment variables.
 - `GET /health` – No authentication required
 - `GET /` – No authentication required
 - `GET /api/asr-streaming` – **Requires** API key
+
+## CUDA Version
+
+The launcher auto-detects the installed CUDA toolkit version from `nvidia-smi` (or `nvcc`
+as fallback) and selects the matching PyTorch wheel tag:
+
+| Detected CUDA | `TORCH_BACKEND` | `PYTORCH_CUDA_INDEX_URL` |
+|---------------|-----------------|--------------------------|
+| 12.6 | `cu126` | `https://download.pytorch.org/whl/cu126` |
+| 12.7 | `cu127` | `https://download.pytorch.org/whl/cu127` |
+| 12.8+ | `cu128` | `https://download.pytorch.org/whl/cu128` |
+
+Override detection by setting both env vars before running:
+
+```bash
+export TORCH_BACKEND=cu126
+export PYTORCH_CUDA_INDEX_URL=https://download.pytorch.org/whl/cu126
+bash scripts/main.sh
+```
+
+When both `TORCH_BACKEND` and `PYTORCH_CUDA_INDEX_URL` are set, auto-detection is
+skipped entirely.
+
+The detection logic lives in `scripts/lib/cuda.sh` and is sourced by
+`scripts/config/deps.sh`.
 
 ## Model Snapshot and `tekken.json` Patching
 
@@ -63,7 +89,7 @@ Notes:
 
 ## vLLM Installation Notes
 
-This repo installs a pinned CUDA 12.8 stack via `scripts/main.sh`:
+This repo installs a pinned CUDA 12.x stack via `scripts/main.sh`:
 
 ```bash
 bash scripts/main.sh
@@ -71,8 +97,8 @@ bash scripts/main.sh
 
 Key points:
 - Dependencies are pinned in `requirements.txt`.
-- The launcher prefers `uv pip` and installs CUDA 12.8-compatible wheels (`--torch-backend=cu128`).
-- The PyTorch CUDA wheel index used by the launcher is `https://download.pytorch.org/whl/cu128` (`PYTORCH_CUDA_INDEX_URL`).
+- The launcher auto-detects CUDA version and selects the matching PyTorch wheels (see [CUDA Version](#cuda-version)).
+- The launcher prefers `uv pip` with `--torch-backend=${TORCH_BACKEND}`.
 
 Validation:
 
@@ -403,14 +429,15 @@ Every environment variable the server reads, with default values. All are option
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PYTORCH_CUDA_INDEX_URL` | `https://download.pytorch.org/whl/cu128` | PyTorch CUDA wheel index URL. |
+| `TORCH_BACKEND` | *(auto-detected)* | PyTorch wheel tag (`cu126`, `cu127`, `cu128`). Auto-detected from CUDA version. |
+| `PYTORCH_CUDA_INDEX_URL` | *(auto-detected)* | PyTorch CUDA wheel index URL. Derived from `TORCH_BACKEND`. |
 
 ## Troubleshooting
 
 ### vLLM Install Fails
 
 - Confirm you are using `uv` on a GPU host.
-- If you see PyTorch/CUDA mismatches, verify you are installing with `--torch-backend=cu128` (see `scripts/steps/04-install-deps.sh`).
+- If you see PyTorch/CUDA mismatches, verify the auto-detected `TORCH_BACKEND` matches your GPU (see [CUDA Version](#cuda-version)).
 - Run `bash scripts/lib/doctor.sh` to confirm `torch.version.cuda` is `12.x`.
 
 ### Model Download Is Slow or Fails

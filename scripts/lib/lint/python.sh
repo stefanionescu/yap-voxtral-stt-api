@@ -3,24 +3,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/../config/paths.sh"
+source "${SCRIPT_DIR}/../../config/paths.sh"
+
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../helpers.sh"
 
 RUN_FIX="${RUN_FIX:-0}"
-
-run_quiet() {
-  local label="$1"
-  shift
-  local tmp
-  tmp="$(mktemp)"
-  if "$@" >"$tmp" 2>&1; then
-    rm -f "$tmp"
-    return 0
-  fi
-  echo "[lint] ${label} failed" >&2
-  cat "$tmp" >&2
-  rm -f "$tmp"
-  return 1
-}
 
 main() {
   cd "${ROOT_DIR}"

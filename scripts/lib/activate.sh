@@ -5,17 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/../config/paths.sh"
 
-choose_python() {
-  if command -v python3.11 >/dev/null 2>&1; then
-    echo "python3.11"
-    return
-  fi
-  if command -v python3 >/dev/null 2>&1; then
-    echo "python3"
-    return
-  fi
-  echo "python"
-}
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/helpers.sh"
 
 PY_BIN="$(choose_python)"
 

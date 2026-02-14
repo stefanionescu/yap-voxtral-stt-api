@@ -8,17 +8,8 @@ source "${SCRIPT_DIR}/../config/paths.sh"
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/scripts/lib/log/logging.sh"
 
-choose_python() {
-  if command -v python3.11 >/dev/null 2>&1; then
-    echo "python3.11"
-    return
-  fi
-  if command -v python3 >/dev/null 2>&1; then
-    echo "python3"
-    return
-  fi
-  echo "python"
-}
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/lib/helpers.sh"
 
 py="$(choose_python)"
 if [[ ! -d ${VENV_DIR} ]]; then
