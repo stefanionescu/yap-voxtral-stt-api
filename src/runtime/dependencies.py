@@ -36,10 +36,6 @@ async def build_runtime_deps() -> RuntimeDeps:
         auth=tuned_settings.auth,
         limits=LimitsSettings(
             max_concurrent_connections=max_connections,
-            ws_message_window_seconds=tuned_settings.limits.ws_message_window_seconds,
-            ws_max_messages_per_window=tuned_settings.limits.ws_max_messages_per_window,
-            ws_cancel_window_seconds=tuned_settings.limits.ws_cancel_window_seconds,
-            ws_max_cancels_per_window=tuned_settings.limits.ws_max_cancels_per_window,
         ),
         websocket=tuned_settings.websocket,
         model=tuned_settings.model,
