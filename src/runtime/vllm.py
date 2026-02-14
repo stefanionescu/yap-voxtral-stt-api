@@ -408,6 +408,12 @@ async def build_vllm_realtime(settings: AppSettings) -> tuple[Any, Any, Any, Any
     max_num_seqs = _tune_max_num_seqs(settings, model_dir)
     engine_args = _build_engine_args(settings, model_dir, max_num_seqs=max_num_seqs)
 
+    # Whisper-causal encoder only supports FlashAttentionBackend; force it so
+    # vLLM doesn't auto-select Triton or FlashInfer (which would crash).
+    if not _env_is_set("VLLM_ATTENTION_BACKEND"):
+        os.environ["VLLM_ATTENTION_BACKEND"] = "FLASH_ATTN"
+        logger.info("vllm: forcing VLLM_ATTENTION_BACKEND=FLASH_ATTN (whisper-causal requirement)")
+
     logger.info("vllm: building engine (model=%s)", model_dir)
     engine_stack = contextlib.AsyncExitStack()
     engine_cm = build_async_engine_client_from_engine_args(
