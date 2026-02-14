@@ -32,13 +32,25 @@ else
 fi
 
 # FlashInfer is pre-installed on some cloud images but Voxtral's whisper-causal
-# encoder does not support it. vLLM v1 auto-selects FlashInfer when present,
-# so remove it to fall back to flash-attn.
+# encoder only supports FlashAttentionBackend. vLLM v1 auto-selects FlashInfer
+# when present, so remove it to let flash-attn be chosen instead.
 if "${VENV_DIR}/bin/python" -c "import flashinfer" 2>/dev/null; then
   log_info "[deps] Removing flashinfer (unsupported by whisper-causal encoder)"
   if command -v uv >/dev/null 2>&1; then
     uv pip uninstall --python "${VENV_DIR}/bin/python" flashinfer flashinfer-python 2>/dev/null || true
   else
     "${VENV_DIR}/bin/pip" uninstall -y flashinfer flashinfer-python 2>/dev/null || true
+  fi
+fi
+
+# Voxtral's whisper-causal encoder requires FlashAttentionBackend (flash-attn).
+# Installed separately because it needs --no-build-isolation to find torch at
+# build time when no pre-built wheel is available.
+if ! "${VENV_DIR}/bin/python" -c "import flash_attn" 2>/dev/null; then
+  log_info "[deps] Installing flash-attn (required by whisper-causal encoder)"
+  if command -v uv >/dev/null 2>&1; then
+    uv pip install --python "${VENV_DIR}/bin/python" flash-attn --no-build-isolation
+  else
+    "${VENV_DIR}/bin/pip" install flash-attn --no-build-isolation
   fi
 fi
